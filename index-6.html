@@ -1,0 +1,168 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>ديوني</title>
+<meta name="theme-color" content="#0f7a55">
+<link rel="apple-touch-icon" href="icon-192.png">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+<style>
+:root{--g:#0f7a55;--r:#d6383d;--bg:#f3f6f4;--c:#fff;--t:#18261f;--m:#66756d}
+*{box-sizing:border-box;margin:0;font-family:Tahoma,system-ui,sans-serif}
+body{background:var(--bg);color:var(--t);max-width:480px;margin:auto;padding:14px 14px 40px}
+h1{font-size:1.25rem}
+.card{background:var(--c);border-radius:12px;padding:14px;margin:10px 0;border:1px solid #dfe7e2}
+.row{display:flex;justify-content:space-between;align-items:center;gap:8px}
+.btn{border:0;border-radius:10px;padding:11px 14px;font-size:1rem;background:var(--g);color:#fff;cursor:pointer;text-decoration:none;text-align:center}
+.btn.o{background:#fff;color:var(--g);border:1px solid var(--g)}
+.btn.r{background:var(--r)}
+.w{width:100%}
+input{width:100%;padding:11px;border:1px solid #cdd8d2;border-radius:10px;margin:5px 0;font-size:1rem}
+.due{color:var(--r);font-weight:700}
+.ok{color:var(--g);font-weight:700}
+.big{font-size:1.9rem;font-weight:800}
+small{color:var(--m)}
+#toast{position:fixed;bottom:20px;left:50%;transform:translateX(-50%);background:#222;color:#fff;padding:10px 16px;border-radius:20px;display:none}
+</style>
+</head>
+<body>
+<div id="app"></div>
+<div id="toast"></div>
+<script type="module">
+import{initializeApp}from"https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
+import{getAuth,GoogleAuthProvider,signInWithPopup,onAuthStateChanged,signOut}from"https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
+import{getFirestore,doc,setDoc,collection,query,where,orderBy,onSnapshot,writeBatch,increment}from"https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+
+const fb=initializeApp({apiKey:"AIzaSyDaLsIF93OD-Lr9y51j_s4wB9OzahLUiTQ",authDomain:"grocery-debts.firebaseapp.com",projectId:"grocery-debts",storageBucket:"grocery-debts.firebasestorage.app",messagingSenderId:"484535933298",appId:"1:484535933298:web:87f8e2ea08a6d26231e5eb"});
+const auth=getAuth(fb),db=getFirestore(fb);
+const NOTIFY_URL=""; // رابط دالة الإشعارات (المرحلة التالية)
+
+const $=s=>document.querySelector(s),A=$('#app');
+const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const fmt=n=>Number(n).toLocaleString('en-US');
+const dt=ts=>new Date(ts).toLocaleString('ar',{dateStyle:'short',timeStyle:'short'});
+const toast=m=>{const t=$('#toast');t.textContent=m;t.style.display='block';setTimeout(()=>t.style.display='none',2500)};
+const newToken=()=>[...crypto.getRandomValues(new Uint8Array(24))].map(b=>b.toString(16).padStart(2,'0')).join('');
+const link=t=>location.origin+location.pathname+'?c='+t;
+const txRow=x=>`<div class="card row"><div><b>${x.type=='debt'?'دين':'دفعة'}</b> <small>${dt(x.ts)}</small><br><small>${esc(x.note)}</small></div><span class="${x.type=='debt'?'due':'ok'}">${x.type=='debt'?'+':'-'}${fmt(x.amount)}</span></div>`;
+
+let user,unsubs=[];
+const clean=()=>{unsubs.forEach(u=>u());unsubs=[]};
+
+async function notify(token,msg){
+  if(!NOTIFY_URL)return;
+  try{await fetch(NOTIFY_URL,{method:'POST',headers:{'Content-Type':'application/json',Authorization:'Bearer '+await auth.currentUser.getIdToken()},body:JSON.stringify({token,msg})})}catch(e){}
+}
+
+/* ===== التثبيت كتطبيق + الإشعارات ===== */
+const APP_ID="a55ac811-efac-462d-b7dd-2f25b7f5d1a4";
+function setManifest(start,name){
+  const base=location.origin+location.pathname;
+  const m={name,short_name:name,start_url:start,scope:base,display:'standalone',background_color:'#f3f6f4',theme_color:'#0f7a55',lang:'ar',dir:'rtl',icons:[{src:base+'icon-192.png',sizes:'192x192',type:'image/png'},{src:base+'icon-512.png',sizes:'512x512',type:'image/png'}]};
+  const l=document.createElement('link');l.rel='manifest';
+  l.href=URL.createObjectURL(new Blob([JSON.stringify(m)],{type:'application/manifest+json'}));
+  document.head.appendChild(l);
+}
+function initPush(t){
+  const s=document.createElement('script');
+  s.src='https://cdn.onesignal.com/sdks/web/v16/OneSignalSDK.page.js';s.defer=true;document.head.appendChild(s);
+  window.OneSignalDeferred=window.OneSignalDeferred||[];
+  OneSignalDeferred.push(async O=>{
+    await O.init({appId:APP_ID});
+    await O.login(t);
+    const b=$('#pb');
+    if(!O.Notifications.isPushSupported()){b.textContent='للإشعارات على الآيفون: مشاركة ثم "إضافة إلى الشاشة الرئيسية" وافتح التطبيق من الأيقونة';b.disabled=true;b.style.display='block';return}
+    const upd=()=>{b.style.display=O.Notifications.permission?'none':'block'};
+    upd();
+    O.Notifications.addEventListener('permissionChange',upd);
+    b.onclick=async()=>{await O.Notifications.requestPermission();upd()};
+  });
+}
+
+/* ===== واجهة العميل ===== */
+function customerView(t){
+  setManifest(location.href,'ديوني');
+  initPush(t);
+  A.innerHTML='<h1>كشف حسابي</h1><button class="btn w" id="pb" style="display:none;margin:10px 0">🔔 فعّل إشعارات ديوني</button><div id="acc" class="card">جارٍ التحميل...</div><div id="txs"></div>';
+  onSnapshot(doc(db,'accounts',t),s=>{
+    if(!s.exists()){$('#acc').textContent='الرابط غير صحيح. اطلب رابطاً جديداً من البقالة.';return}
+    const a=s.data();
+    $('#acc').innerHTML=`<small>${esc(a.name)}</small><div class="big ${a.balance>0?'due':'ok'}">${fmt(Math.abs(a.balance))}</div><small>${a.balance>0?'المبلغ المطلوب منك':a.balance<0?'رصيد لك عند البقالة':'لا توجد مديونية'}</small>`;
+  },()=>$('#acc').textContent='تعذّر تحميل الكشف. حاول مرة أخرى.');
+  onSnapshot(query(collection(db,'accounts',t,'tx'),orderBy('ts','desc')),s=>{
+    $('#txs').innerHTML=s.docs.map(d=>txRow(d.data())).join('')||'<p class="card">لا توجد عمليات بعد</p>';
+  });
+}
+
+/* ===== واجهة التاجر ===== */
+function login(){
+  A.innerHTML='<div class="card" style="text-align:center;margin-top:60px"><h1>ديوني</h1><p><small>دفتر ديون البقالة</small></p><br><button class="btn" id="g">الدخول بحساب جوجل</button></div>';
+  $('#g').onclick=()=>signInWithPopup(auth,new GoogleAuthProvider()).catch(()=>toast('تعذّر الدخول. تأكد من إضافة النطاق في Firebase.'));
+}
+
+function home(){
+  clean();
+  A.innerHTML='<div class="row"><h1>العملاء</h1><button class="btn o" id="out">خروج</button></div><div class="card"><small>إجمالي الديون</small><div class="big due" id="tot">0</div></div><button class="btn w" id="add">+ عميل جديد</button><div id="list"></div>';
+  $('#out').onclick=()=>signOut(auth);
+  $('#add').onclick=addForm;
+  unsubs.push(onSnapshot(query(collection(db,'accounts'),where('owner','==',user.uid)),s=>{
+    const accs=s.docs.map(d=>({id:d.id,...d.data()})).sort((a,b)=>b.balance-a.balance);
+    $('#tot').textContent=fmt(accs.reduce((n,a)=>n+Math.max(a.balance,0),0));
+    $('#list').innerHTML=accs.map(a=>`<div class="card row" data-id="${a.id}" style="cursor:pointer"><b>${esc(a.name)}</b><span class="${a.balance>0?'due':'ok'}">${fmt(a.balance)}</span></div>`).join('')||'<p class="card">لا يوجد عملاء بعد. اضغط "عميل جديد" للبدء.</p>';
+    document.querySelectorAll('[data-id]').forEach(e=>e.onclick=()=>detail(e.dataset.id));
+  }));
+}
+
+function addForm(){
+  clean();
+  A.innerHTML='<h1>عميل جديد</h1><div class="card"><input id="n" placeholder="الاسم"><input id="ph" type="tel" placeholder="الهاتف (اختياري)"><button class="btn w" id="s">حفظ العميل</button></div><button class="btn o w" id="b">رجوع</button>';
+  $('#b').onclick=home;
+  $('#s').onclick=async()=>{
+    const name=$('#n').value.trim();
+    if(!name)return toast('اكتب اسم العميل');
+    const t=newToken();
+    try{await setDoc(doc(db,'accounts',t),{owner:user.uid,name,phone:$('#ph').value.trim(),balance:0,createdAt:Date.now()});detail(t)}
+    catch(e){toast('تعذّر الحفظ')}
+  };
+}
+
+function detail(id){
+  clean();
+  A.innerHTML='<button class="btn o" id="b">رجوع</button><div class="card" id="h"></div><div class="row"><button class="btn r w" id="d">+ دين</button><button class="btn w" id="p">+ دفعة</button></div><div id="f"></div><div class="card" id="q"></div><div id="txs"></div>';
+  $('#b').onclick=home;
+  unsubs.push(onSnapshot(doc(db,'accounts',id),s=>{
+    const a=s.data();if(!a)return;
+    $('#h').innerHTML=`<small>${esc(a.name)} ${esc(a.phone)}</small><div class="big ${a.balance>0?'due':'ok'}">${fmt(a.balance)}</div>`;
+  }));
+  unsubs.push(onSnapshot(query(collection(db,'accounts',id,'tx'),orderBy('ts','desc')),s=>{
+    $('#txs').innerHTML=s.docs.map(d=>txRow(d.data())).join('');
+  }));
+  const L=link(id);
+  $('#q').innerHTML='<small>رابط العميل وكشف حسابه (QR)</small><div id="qr" style="margin:10px auto;width:160px"></div><div class="row"><button class="btn o w" id="c">نسخ الرابط</button><a class="btn w" id="w" target="_blank">واتساب</a></div>';
+  new QRCode($('#qr'),{text:L,width:160,height:160});
+  $('#c').onclick=()=>navigator.clipboard.writeText(L).then(()=>toast('تم نسخ الرابط'));
+  $('#w').href='https://wa.me/?text='+encodeURIComponent('كشف حسابك: '+L);
+  const form=type=>{
+    $('#f').innerHTML='<div class="card"><input id="a" type="number" inputmode="decimal" placeholder="المبلغ"><input id="nt" placeholder="ملاحظة (اختياري)"><button class="btn w" id="ok">تأكيد</button></div>';
+    $('#ok').onclick=async()=>{
+      const amount=Number($('#a').value);
+      if(!(amount>0))return toast('أدخل مبلغاً صحيحاً');
+      $('#ok').disabled=true;
+      const bt=writeBatch(db);
+      bt.set(doc(collection(db,'accounts',id,'tx')),{type,amount,note:$('#nt').value.trim(),ts:Date.now()});
+      bt.update(doc(db,'accounts',id),{balance:increment(type=='debt'?amount:-amount)});
+      try{await bt.commit();$('#f').innerHTML='';toast('تم التسجيل');notify(id,(type=='debt'?'سُجّل عليك دين ':'تم تسجيل دفعة ')+fmt(amount))}
+      catch(e){toast('تعذّر التسجيل');$('#ok').disabled=false}
+    };
+  };
+  $('#d').onclick=()=>form('debt');
+  $('#p').onclick=()=>form('payment');
+}
+
+const tk=new URLSearchParams(location.search).get('c');
+if(tk)customerView(tk);
+else{setManifest(location.origin+location.pathname,'ديوني - التاجر');onAuthStateChanged(auth,u=>{user=u;u?home():login()})}
+</script>
+</body>
+</html>
