@@ -18,21 +18,23 @@ small{color:var(--m);font-size:.78rem}
 .row{display:flex;justify-content:space-between;align-items:center;gap:8px}
 .grid2{display:grid;grid-template-columns:1fr 1fr;gap:10px}
 .grid3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px}
+.grid4{display:grid;grid-template-columns:1fr 1fr;gap:8px}
 .btn{border:0;border-radius:11px;padding:11px 14px;font-size:.92rem;background:var(--g);color:#fff;cursor:pointer;display:inline-flex;align-items:center;justify-content:center;gap:6px;font-weight:700}
 .btn.o{background:#fff;color:var(--g);border:1.5px solid var(--g)}
 .btn.r{background:var(--r)}.btn.o.r{background:#fff;color:var(--r);border-color:var(--r)}
 .btn.g{background:#eef3f0;color:var(--t);border:1px solid var(--bd)}
+.btn.p{background:var(--p)}.btn.o.p{background:#fff;color:var(--p);border-color:var(--p)}
 .btn.sm{padding:7px 10px;font-size:.8rem;border-radius:9px}.w{width:100%}
 input,select,textarea{width:100%;padding:11px;border:1.5px solid var(--bd);border-radius:11px;margin:5px 0;font-size:.95rem;background:#fff;font-family:inherit}
 input:focus,select:focus,textarea:focus{outline:0;border-color:var(--g)}
 label{font-size:.82rem;color:var(--m);display:block;margin-top:6px}
-.due{color:var(--r);font-weight:800}.ok{color:var(--g);font-weight:800}.warn{color:var(--o);font-weight:800}
+.due{color:var(--r);font-weight:800}.ok{color:var(--g);font-weight:800}.warn{color:var(--o);font-weight:800}.purple{color:var(--p);font-weight:800}
 .big{font-size:1.7rem;font-weight:800}
 .top{display:flex;justify-content:space-between;align-items:center;padding:8px 0}
 .hint{font-size:.75rem;color:var(--m)}
 #nav{position:fixed;bottom:0;left:0;right:0;max-width:520px;margin:auto;background:#fff;border-top:1px solid var(--bd);display:flex;justify-content:space-around;padding:6px 0 8px;z-index:50;box-shadow:0 -4px 16px rgba(0,0,0,.05)}
-#nav a{display:flex;flex-direction:column;align-items:center;gap:2px;color:var(--m);font-size:.7rem;padding:4px 8px;border-radius:10px;cursor:pointer}
-#nav a span{font-size:1.25rem;line-height:1}#nav a.on{color:var(--g);background:#eaf5f0}
+#nav a{display:flex;flex-direction:column;align-items:center;gap:2px;color:var(--m);font-size:.68rem;padding:4px 4px;border-radius:10px;cursor:pointer;flex:1}
+#nav a span{font-size:1.2rem;line-height:1}#nav a.on{color:var(--g);background:#eaf5f0}
 #toast{position:fixed;bottom:100px;left:50%;transform:translateX(-50%);background:#16241d;color:#fff;padding:11px 18px;border-radius:22px;display:none;z-index:100;font-size:.85rem;max-width:90%;text-align:center}
 .modal{position:fixed;inset:0;background:rgba(10,25,18,.5);display:none;align-items:flex-end;justify-content:center;z-index:200}
 .modal.open{display:flex}
@@ -43,42 +45,43 @@ label{font-size:.82rem;color:var(--m);display:block;margin-top:6px}
 .item{display:flex;justify-content:space-between;align-items:center;padding:11px 0;border-bottom:1px solid var(--bd);cursor:pointer}
 .item:last-child{border:0}
 .stat{background:#fff;border-radius:14px;padding:12px;border:1px solid var(--bd);text-align:center;box-shadow:var(--sh)}
-.stat .n{font-size:1.1rem;font-weight:800;margin-top:4px}.stat .l{font-size:.72rem;color:var(--m)}
-.fab{position:fixed;bottom:96px;right:18px;width:54px;height:54px;border-radius:50%;background:var(--g);color:#fff;display:flex;align-items:center;justify-content:center;font-size:1.6rem;box-shadow:0 6px 18px rgba(15,122,85,.4);z-index:40;cursor:pointer}
+.stat .n{font-size:1.05rem;font-weight:800;margin-top:4px}.stat .l{font-size:.72rem;color:var(--m)}
 table{width:100%;border-collapse:collapse;font-size:.85rem}
 th,td{padding:7px;border-bottom:1px solid var(--bd);text-align:right}
+.switch{position:relative;display:inline-block;width:46px;height:26px}
+.switch input{opacity:0;width:0;height:0}
+.slider{position:absolute;cursor:pointer;top:0;left:0;right:0;bottom:0;background:#ccc;border-radius:26px;transition:.3s}
+.slider:before{position:absolute;content:"";height:20px;width:20px;left:3px;bottom:3px;background:#fff;border-radius:50%;transition:.3s}
+input:checked+.slider{background:var(--g)}
+input:checked+.slider:before{transform:translateX(20px)}
 
-/* ===== تنسيق واجهة العميل (Public View) ===== */
-.pub-header { text-align: center; padding: 20px 0 10px; }
-.pub-logo { width: 60px; height: 60px; background: #0f7a55; color: #fff; border-radius: 16px; display: flex; align-items: center; justify-content: center; font-size: 1.8rem; margin: 0 auto 10px; box-shadow: 0 4px 12px rgba(15,122,85,.3); }
-.pub-header h1 { font-size: 1.3rem; color: #16241d; }
-.pub-header p { color: #6b7b72; font-size: .85rem; }
-.pub-card { background: #fff; border-radius: 16px; padding: 16px; margin-bottom: 12px; border: 1px solid #dde7e1; box-shadow: 0 2px 10px rgba(0,0,0,.03); }
-.pub-balance-card { text-align: center; padding: 25px 16px; }
-.pub-balance-card h2 { font-size: 1.1rem; margin-bottom: 5px; }
-.pub-status { display: inline-block; padding: 4px 12px; border-radius: 20px; font-size: .75rem; font-weight: bold; background: #f0f4f2; color: #6b7b72; }
-.pub-status.due { background: #fdf0f0; color: #d6383d; }
-.pub-status.ok { background: #eaf5f0; color: #0f7a55; }
-.pub-stat { text-align: center; padding: 10px; background: #f8faf9; border-radius: 10px; }
-.pub-stat small { display: block; margin-bottom: 4px; }
-.pub-stat b { font-size: 1rem; }
-.pub-tx { display: flex; align-items: center; padding: 12px 0; border-bottom: 1px dashed #dde7e1; }
-.pub-tx:last-child { border-bottom: 0; }
-.pub-tx-icon { width: 36px; height: 36px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: bold; font-size: 1.1rem; flex-shrink: 0; margin-left: 10px; }
-.pub-tx-icon.ok { background: #eaf5f0; color: #0f7a55; }
-.pub-tx-icon.due { background: #fdf0f0; color: #d6383d; }
-.pub-tx-info { flex: 1; }
-.pub-tx-info b { font-size: .9rem; display: block; }
-.pub-tx-info small { font-size: .72rem; color: #6b7b72; }
-.pub-tx-amount { font-weight: bold; font-size: .95rem; }
-.pub-tx-amount.ok { color: #0f7a55; }
-.pub-tx-amount.due { color: #d6383d; }
+/* Public view */
+.pub-header{text-align:center;padding:20px 0 10px}
+.pub-logo{width:60px;height:60px;background:#0f7a55;color:#fff;border-radius:16px;display:flex;align-items:center;justify-content:center;font-size:1.8rem;margin:0 auto 10px;box-shadow:0 4px 12px rgba(15,122,85,.3)}
+.pub-header h1{font-size:1.3rem;color:#16241d}
+.pub-header p{color:#6b7b72;font-size:.85rem}
+.pub-card{background:#fff;border-radius:16px;padding:16px;margin-bottom:12px;border:1px solid #dde7e1;box-shadow:0 2px 10px rgba(0,0,0,.03)}
+.pub-balance-card{text-align:center;padding:25px 16px}
+.pub-balance-card h2{font-size:1.1rem;margin-bottom:5px}
+.pub-status{display:inline-block;padding:4px 12px;border-radius:20px;font-size:.75rem;font-weight:bold;background:#f0f4f2;color:#6b7b72}
+.pub-status.due{background:#fdf0f0;color:#d6383d}
+.pub-status.ok{background:#eaf5f0;color:#0f7a55}
+.pub-stat{text-align:center;padding:10px;background:#f8faf9;border-radius:10px}
+.pub-stat small{display:block;margin-bottom:4px}
+.pub-stat b{font-size:1rem}
+.pub-tx{display:flex;align-items:center;padding:12px 0;border-bottom:1px dashed #dde7e1}
+.pub-tx:last-child{border-bottom:0}
+.pub-tx-icon{width:36px;height:36px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-weight:bold;font-size:1.1rem;flex-shrink:0;margin-left:10px}
+.pub-tx-icon.ok{background:#eaf5f0;color:#0f7a55}
+.pub-tx-icon.due{background:#fdf0f0;color:#d6383d}
+.pub-tx-info{flex:1}
+.pub-tx-info b{font-size:.9rem;display:block}
+.pub-tx-info small{font-size:.72rem;color:#6b7b72}
+.pub-tx-amount{font-weight:bold;font-size:.95rem}
+.pub-tx-amount.ok{color:#0f7a55}
+.pub-tx-amount.due{color:#d6383d}
 
-@media print {
-  #nav, .btn, .pub-header .pub-logo { display: none !important; }
-  body { background: #fff; padding: 0; }
-  .pub-card { border: 1px solid #ccc; box-shadow: none; break-inside: avoid; }
-}
+@media print{#nav,.btn,.pub-header .pub-logo{display:none!important}body{background:#fff;padding:0}.pub-card{border:1px solid #ccc;box-shadow:none;break-inside:avoid}}
 </style>
 </head>
 <body>
@@ -97,7 +100,7 @@ import{getFirestore,doc,setDoc,getDoc,collection,query,where,orderBy,onSnapshot,
 const fb=initializeApp({apiKey:"AIzaSyDaLsIF93OD-Lr9y51j_s4wB9OzahLUiTQ",authDomain:"grocery-debts.firebaseapp.com",projectId:"grocery-debts",storageBucket:"grocery-debts.firebasestorage.app",messagingSenderId:"484535933298",appId:"1:484535933298:web:87f8e2ea08a6d26231e5eb"});
 const auth=getAuth(fb),db=getFirestore(fb);
 
-/* ========== أدوات ========== */
+/* ===== أدوات ===== */
 const $=s=>document.querySelector(s), A=$('#app'), N=$('#nav');
 const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const n2=n=>Number(n||0).toLocaleString('en-US',{maximumFractionDigits:2});
@@ -110,35 +113,70 @@ const link=t=>location.origin+location.pathname+'?c='+t;
 const initials=s=>(s||'?').trim()[0]||'?';
 const startDay=d=>{const x=new Date(d);x.setHours(0,0,0,0);return x.getTime()};
 
-/* ========== الحالة ========== */
+/* ===== الحالة ===== */
 const S={user:null,view:'dashboard',_authTab:'login',customerId:null,supplierId:null,productId:null,
-customers:[],suppliers:[],products:[],sales:[],purchases:[],expenses:[],ledger:[],
-settings:{name:'الكامل سوفت',currency:'ر.ي',phone:'',address:''},
+customers:[],suppliers:[],products:[],sales:[],purchases:[],expenses:[],ledger:[],employees:[],
+settings:{name:'الكامل سوفت',currency:'ر.ي',phone:'',address:'',autoWhatsApp:true},
 cart:[],formOpen:false,q:'',unsubs:[],chart:null};
 
 function modal(h){$('#modalBox').innerHTML=h;$('#modal').classList.add('open')}
 window.closeModal=()=>$('#modal').classList.remove('open');
 
-/* ========== دفتر اليومية ========== */
+/* ===== دفتر اليومية ===== */
 function ledgerData(type,label,amount,dir,cash,extra={}){
   return{owner:S.user.uid,ts:Date.now(),type,label,amount:Math.abs(amount),dir,cash:cash||0,...extra};
 }
 function newLedgerRef(){return doc(collection(db,'ledger'))}
 
-/* ========== التنقل ========== */
+/* ===== واتساب ===== */
+function whatsappSend(phone,name,msg){
+  if(!phone)return toast('لا يوجد رقم هاتف مسجل');
+  let p=phone.replace(/[^\d]/g,'');
+  if(p.startsWith('00'))p=p.slice(2);
+  if(!p.startsWith('967')){
+    p=p.replace(/^0+/,'');
+    p='967'+p;
+  }
+  const text=`السلام عليكم ${name} 🌟\n\n${msg}\n\n— ${S.settings.name}`;
+  const url='https://wa.me/'+p+'?text='+encodeURIComponent(text);
+  window.open(url,'_blank');
+}
+function notifyDebt(name,phone,amount,balance,kind){
+  if(!S.settings.autoWhatsApp||!phone)return;
+  const isDebt=kind==='debt';
+  const msg=isDebt
+    ? `تم تسجيل دين بمبلغ *${n2(amount)} ${S.settings.currency}*\nالرصيد الحالي: *${n2(balance)} ${S.settings.currency}*\n\nشكراً لتعاملك معنا 🌹`
+    : `تم تسجيل دفعة بمبلغ *${n2(amount)} ${S.settings.currency}*\nالرصيد المتبقي: *${n2(balance)} ${S.settings.currency}*\n\nشكراً لك 💚`;
+  // إظهار نافذة تأكيد
+  modal(`<h2>إشعار واتساب</h2>
+  <p style="margin:10px 0;font-size:.9rem;color:#6b7b72">هل تريد إرسال إشعار واتساب إلى <b>${esc(name)}</b>؟</p>
+  <div class="card" style="background:#f8faf9;font-size:.85rem;white-space:pre-wrap;padding:12px">${esc(msg)}</div>
+  <div class="row" style="margin-top:12px">
+    <button class="btn o w" onclick="closeModal()">لاحقاً</button>
+    <button class="btn w" id="wa-go">📱 إرسال</button>
+  </div>`);
+  $('#wa-go').onclick=()=>{whatsappSend(phone,name,msg);closeModal()};
+}
+
+/* ===== التنقل ===== */
 function go(v,id){
   S.view=v;S.formOpen=false;S.q='';S.cart=[];
   if(v==='customer')S.customerId=id;
   if(v==='supplier')S.supplierId=id;
+  if(v==='employee')S.employeeId=id;
   window.scrollTo(0,0);render();
 }
 function nav(){
-  const items=[['dashboard','🏠','الرئيسية'],['customers','👥','العملاء'],['sales','🛒','المبيعات'],['products','📦','المخزون'],['reports','📊','التقارير']];
-  N.innerHTML=items.map(([v,i,l])=>`<a class="${S.view===v||(v==='customers'&&S.view==='customer')?'on':''}" data-v="${v}"><span>${i}</span><small>${l}</small></a>`).join('');
+  const items=[['dashboard','🏠','الرئيسية'],['customers','👥','العملاء'],['sales','🛒','المبيعات'],
+  ['employees','👷','الموظفين'],['reports','📊','التقارير']];
+  N.innerHTML=items.map(([v,i,l])=>{
+    const on=S.view===v||(v==='customers'&&(S.view==='customer'))||(v==='employees'&&S.view==='employee');
+    return `<a class="${on?'on':''}" data-v="${v}"><span>${i}</span><small>${l}</small></a>`;
+  }).join('');
   N.querySelectorAll('[data-v]').forEach(e=>e.onclick=()=>go(e.dataset.v));
 }
 
-/* ========== العرض الرئيسي ========== */
+/* ===== العرض الرئيسي ===== */
 function render(){
   if(!S.user){loginView();return}
   nav();
@@ -154,33 +192,25 @@ function render(){
   else if(v==='purchases')purchasesList();
   else if(v==='purchase-new')purchaseNew();
   else if(v==='expenses')expensesList();
+  else if(v==='employees')employeesList();
+  else if(v==='employee')employeePage(S.employeeId);
   else if(v==='reports')reportsView();
   else if(v==='ledger')ledgerView();
   else if(v==='settings')settingsView();
   else dash();
 }
 
-/* ========== ترجمة أخطاء Firebase ========== */
+/* ===== تسجيل الدخول ===== */
 function authErr(e){
-  const c=e?.code||'';
-  const m={
-    'auth/invalid-email':'البريد الإلكتروني غير صحيح',
-    'auth/user-not-found':'لا يوجد حساب بهذا البريد',
-    'auth/wrong-password':'كلمة المرور غير صحيحة',
-    'auth/invalid-credential':'البريد أو كلمة المرور غير صحيحة',
-    'auth/email-already-in-use':'هذا البريد مستخدم مسبقاً',
-    'auth/weak-password':'كلمة المرور قصيرة جداً (6 أحرف على الأقل)',
-    'auth/too-many-requests':'محاولات كثيرة، حاول لاحقاً',
-    'auth/network-request-failed':'تعذّر الاتصال بالإنترنت',
-    'auth/popup-closed-by-user':'أُغلقت نافذة تسجيل الدخول',
-    'auth/popup-blocked':'المتصفح منع النافذة، اسمح بالنوافذ المنبثقة',
-    'auth/operation-not-allowed':'طريقة الدخول غير مفعّلة في Firebase',
-    'auth/missing-name':'اكتب اسمك الكامل'
-  };
+  const c=e?.code||'';const m={
+    'auth/invalid-email':'البريد غير صحيح','auth/user-not-found':'لا يوجد حساب بهذا البريد',
+    'auth/wrong-password':'كلمة المرور غير صحيحة','auth/invalid-credential':'البريد أو كلمة المرور غير صحيحة',
+    'auth/email-already-in-use':'البريد مستخدم مسبقاً','auth/weak-password':'كلمة المرور قصيرة (6 أحرف على الأقل)',
+    'auth/too-many-requests':'محاولات كثيرة، حاول لاحقاً','auth/network-request-failed':'تعذّر الاتصال',
+    'auth/popup-closed-by-user':'أُغلقت نافذة الدخول','auth/popup-blocked':'المتصفح منع النافذة',
+    'auth/missing-name':'اكتب اسمك الكامل'};
   return m[c]||('خطأ: '+c);
 }
-
-/* ========== تسجيل الدخول ========== */
 function loginView(){
   N.innerHTML='';
   A.innerHTML=`
@@ -189,112 +219,77 @@ function loginView(){
     <h1>الكامل سوفت</h1>
     <p style="color:#6b7b72;font-size:.85rem;margin-top:6px">نظام محاسبي متكامل</p>
   </div>
-
   <div class="card">
     <div class="row" style="margin-bottom:10px">
       <button class="btn ${S._authTab==='login'?'':'g'} w" id="tab-login">دخول</button>
       <button class="btn ${S._authTab==='register'?'':'g'} w" id="tab-register">حساب جديد</button>
     </div>
-
-    ${S._authTab==='register'?`
-      <label>الاسم الكامل</label>
-      <input id="a-name" placeholder="مثال: أحمد محمد">
-    `:''}
-
+    ${S._authTab==='register'?'<label>الاسم الكامل</label><input id="a-name" placeholder="مثال: أحمد محمد">':''}
     <label>البريد الإلكتروني</label>
     <input id="a-email" type="email" placeholder="you@email.com" autocomplete="email">
-
     <label>كلمة المرور</label>
     <input id="a-pass" type="password" placeholder="6 أحرف على الأقل" autocomplete="current-password">
-
-    <button class="btn w" id="a-go" style="margin-top:12px">
-      ${S._authTab==='register'?'إنشاء الحساب':'تسجيل الدخول'}
-    </button>
-
-    ${S._authTab==='login'?`
-      <div style="text-align:center;margin-top:10px">
-        <a id="a-forgot" style="color:#0f7a55;font-size:.82rem;cursor:pointer">نسيت كلمة المرور؟</a>
-      </div>
-    `:''}
-
+    <button class="btn w" id="a-go" style="margin-top:12px">${S._authTab==='register'?'إنشاء الحساب':'تسجيل الدخول'}</button>
+    ${S._authTab==='login'?'<div style="text-align:center;margin-top:10px"><a id="a-forgot" style="color:#0f7a55;font-size:.82rem;cursor:pointer">نسيت كلمة المرور؟</a></div>':''}
     <div style="display:flex;align-items:center;gap:10px;margin:16px 0">
-      <div style="flex:1;height:1px;background:#dde7e1"></div>
-      <small>أو</small>
-      <div style="flex:1;height:1px;background:#dde7e1"></div>
+      <div style="flex:1;height:1px;background:#dde7e1"></div><small>أو</small><div style="flex:1;height:1px;background:#dde7e1"></div>
     </div>
-
     <button class="btn o w" id="g">
       <img src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg" width="18" style="background:#fff;border-radius:3px;padding:2px">
       المتابعة بحساب جوجل
     </button>
   </div>
-
-  <p style="text-align:center;font-size:.72rem;color:#888;margin-top:14px">
-    سيتم الاحتفاظ بتسجيل دخولك تلقائياً على هذا الجهاز
-  </p>`;
+  <p style="text-align:center;font-size:.72rem;color:#888;margin-top:14px">سيتم الاحتفاظ بتسجيل دخولك تلقائياً</p>`;
 
   $('#tab-login').onclick=()=>{S._authTab='login';loginView()};
   $('#tab-register').onclick=()=>{S._authTab='register';loginView()};
-
   $('#a-go').onclick=async()=>{
-    const email=$('#a-email').value.trim();
-    const pass=$('#a-pass').value;
+    const email=$('#a-email').value.trim(),pass=$('#a-pass').value;
     if(!email||!pass)return toast('أدخل البريد وكلمة المرور');
     $('#a-go').disabled=true;
     try{
       await setPersistence(auth,browserLocalPersistence);
       if(S._authTab==='register'){
-        const name=$('#a-name').value.trim();
-        if(!name)throw{code:'auth/missing-name'};
+        const name=$('#a-name').value.trim();if(!name)throw{code:'auth/missing-name'};
         const cred=await createUserWithEmailAndPassword(auth,email,pass);
-        await setDoc(doc(db,'settings',cred.user.uid),{name,currency:'ر.ي',phone:'',address:''},{merge:true});
-        toast('تم إنشاء الحساب بنجاح');
-      }else{
-        await signInWithEmailAndPassword(auth,email,pass);
-        toast('مرحباً بك');
-      }
-    }catch(e){
-      $('#a-go').disabled=false;
-      toast(authErr(e));
-    }
+        await setDoc(doc(db,'settings',cred.user.uid),{name,currency:'ر.ي',phone:'',address:'',autoWhatsApp:true},{merge:true});
+        toast('تم إنشاء الحساب');
+      }else{await signInWithEmailAndPassword(auth,email,pass);toast('مرحباً بك')}
+    }catch(e){$('#a-go').disabled=false;toast(authErr(e))}
   };
-
   $('#a-pass').addEventListener('keydown',e=>{if(e.key==='Enter')$('#a-go').click()});
-
   $('#a-forgot').onclick=async()=>{
-    const email=$('#a-email').value.trim();
-    if(!email)return toast('اكتب بريدك أولاً');
-    try{await sendPasswordResetEmail(auth,email);toast('تم إرسال رابط الاستعادة إلى بريدك')}
-    catch(e){toast(authErr(e))}
+    const email=$('#a-email').value.trim();if(!email)return toast('اكتب بريدك أولاً');
+    try{await sendPasswordResetEmail(auth,email);toast('تم إرسال رابط الاستعادة')}catch(e){toast(authErr(e))}
   };
-
   $('#g').onclick=async()=>{
-    try{
-      await setPersistence(auth,browserLocalPersistence);
-      await signInWithPopup(auth,new GoogleAuthProvider());
-    }catch(e){toast(authErr(e))}
+    try{await setPersistence(auth,browserLocalPersistence);await signInWithPopup(auth,new GoogleAuthProvider())}
+    catch(e){toast(authErr(e))}
   };
 }
 
-/* ========== لوحة التحكم ========== */
+/* ===== لوحة التحكم ===== */
 function dash(){
   const cash=S.ledger.reduce((n,l)=>n+(l.cash||0),0);
   const recv=S.customers.reduce((n,c)=>n+Math.max(c.balance||0,0),0);
   const pay=S.suppliers.reduce((n,s)=>n+Math.max(s.balance||0,0),0);
   const inv=S.products.reduce((n,p)=>n+(p.stock||0)*(p.cost||0),0);
+  const empAdv=S.employees.reduce((n,e)=>n+Math.max(e.balance||0,0),0);
   const t0=startDay(new Date());
   const tSales=S.sales.filter(s=>s.ts>=t0).reduce((n,s)=>n+(s.total||0),0);
   const tExp=S.expenses.filter(e=>e.ts>=t0).reduce((n,e)=>n+(e.amount||0),0);
   A.innerHTML=`
   <div class="top"><h1>لوحة التحكم</h1>
-   <div><button class="btn g sm" id="lg">📒 اليومية</button> <button class="btn g sm" id="st">⚙️</button> <button class="btn g sm" id="out">خروج</button></div></div>
+   <div><button class="btn g sm" id="lg">📒</button> <button class="btn g sm" id="st">⚙️</button> <button class="btn g sm" id="out">خروج</button></div></div>
   <div class="grid2">
     <div class="stat"><div class="l">الصندوق (نقدية)</div><div class="n ok">${fmt(cash)}</div></div>
     <div class="stat"><div class="l">ديون العملاء</div><div class="n due">${fmt(recv)}</div></div>
     <div class="stat"><div class="l">مستحق للموردين</div><div class="n warn">${fmt(pay)}</div></div>
+    <div class="stat"><div class="l">سحبيات الموظفين</div><div class="n purple">${fmt(empAdv)}</div></div>
     <div class="stat"><div class="l">قيمة المخزون</div><div class="n" style="color:var(--b)">${fmt(inv)}</div></div>
     <div class="stat"><div class="l">مبيعات اليوم</div><div class="n ok">${fmt(tSales)}</div></div>
     <div class="stat"><div class="l">مصروفات اليوم</div><div class="n due">${fmt(tExp)}</div></div>
+    <div class="stat"><div class="l">عدد الموظفين</div><div class="n">${S.employees.length}</div></div>
   </div>
   <div class="card"><small>الوصول السريع</small><div class="grid3" style="margin-top:8px">
     ${quick('sale-new','🛒','بيع')}${quick('purchase-new','📥','شراء')}${quick('customers','👥','عميل')}
@@ -304,8 +299,7 @@ function dash(){
    <div>${S.ledger.slice(0,7).map(txRow).join('')||'<p class="hint" style="padding:10px 0">لا توجد حركات</p>'}</div></div>`;
   $('#out').onclick=async()=>{
     if(!confirm('هل تريد تسجيل الخروج؟'))return;
-    try{await signOut(auth);toast('تم تسجيل الخروج')}
-    catch(e){toast('تعذّر تسجيل الخروج')}
+    try{await signOut(auth);toast('تم تسجيل الخروج')}catch(e){toast('تعذّر تسجيل الخروج')}
   };
   $('#st').onclick=()=>go('settings');
   $('#lg').onclick=$('#lg2').onclick=()=>go('ledger');
@@ -313,12 +307,13 @@ function dash(){
 }
 function quick(v,i,l){return `<div class="stat" data-go="${v}" style="cursor:pointer"><div style="font-size:1.5rem">${i}</div><div class="l">${l}</div></div>`}
 function txRow(l){
+  const isIn=l.dir==='in';
   return `<div class="tx"><div><b style="font-size:.85rem">${esc(l.label||l.type)}</b><br>
   <small>${dt(l.ts)}${l.note?' · '+esc(l.note):''}</small></div>
-  <span class="${l.dir==='in'?'ok':'due'}">${l.dir==='in'?'+':'-'}${n2(l.amount)}</span></div>`;
+  <span class="${isIn?'ok':'due'}">${isIn?'+':'-'}${n2(l.amount)}</span></div>`;
 }
 
-/* ========== العملاء ========== */
+/* ===== العملاء ===== */
 function customersList(){
   const q=S.q.toLowerCase();
   const list=S.customers.filter(c=>!q||c.name.toLowerCase().includes(q)||(c.phone||'').includes(q)).sort((a,b)=>(b.balance||0)-(a.balance||0));
@@ -339,7 +334,7 @@ function customerForm(c){
   const edit=!!c;
   modal(`<h2>${edit?'تعديل عميل':'عميل جديد'}</h2>
   <label>الاسم *</label><input id="n" value="${esc(c?.name||'')}" placeholder="اسم العميل">
-  <label>الهاتف</label><input id="ph" type="tel" value="${esc(c?.phone||'')}">
+  <label>الهاتف (لإشعار واتساب)</label><input id="ph" type="tel" value="${esc(c?.phone||'')}" placeholder="7771234567">
   ${edit?'':`<label>رصيد افتتاحي (دين سابق)</label><input id="op" type="number" placeholder="0">`}
   <div class="row" style="margin-top:12px"><button class="btn o w" onclick="closeModal()">إلغاء</button><button class="btn w" id="sv">حفظ</button></div>`);
   $('#sv').onclick=async()=>{
@@ -391,27 +386,52 @@ function amountForm(type,ent,kind){
   modal(`<h2>${isDebt?'تسجيل دين على':'تسجيل دفعة '+(isCust?'من':'إلى')} ${esc(ent.name)}</h2>
   <label>المبلغ</label><input id="am" type="number" inputmode="decimal" placeholder="0">
   <label>ملاحظة</label><input id="nt" placeholder="اختياري">
+  <div id="err" style="color:#d6383d;font-size:.8rem;margin-top:6px;display:none"></div>
   <div class="row" style="margin-top:12px"><button class="btn o w" onclick="closeModal()">إلغاء</button><button class="btn w" id="sv">تأكيد</button></div>`);
   $('#sv').onclick=async()=>{
-    const amount=Number($('#am').value);if(!(amount>0))return toast('أدخل مبلغاً صحيحاً');
-    const col=isCust?'accounts':'suppliers';
-    const extra=isCust?{accountId:ent.id}:{supplierId:ent.id};
-    const bt=writeBatch(db);
-    bt.set(newLedgerRef(),ledgerData(isDebt?'debt':'payment',isDebt?'دين':'دفعة',amount,
-      (isCust?isDebt:!isDebt)?'out':'in',(isCust?isDebt:!isDebt)?0:(isCust?amount:-amount),{...extra,note:$('#nt').value.trim()}));
-    bt.update(doc(db,col,ent.id),{balance:increment(isDebt?amount:-amount)});
-    await bt.commit();closeModal();toast('تم التسجيل');
+    const amount=Number($('#am').value);
+    if(!(amount>0))return toast('أدخل مبلغاً صحيحاً');
+    const svBtn=$('#sv');svBtn.disabled=true;svBtn.textContent='جارٍ الحفظ...';
+    $('#err').style.display='none';
+    try{
+      const col=isCust?'accounts':'suppliers';
+      const extra=isCust?{accountId:ent.id}:{supplierId:ent.id};
+      const oldBalance=Number(ent.balance)||0;
+      const newBalance=isDebt?oldBalance+amount:oldBalance-amount;
+      const bt=writeBatch(db);
+      bt.set(newLedgerRef(),ledgerData(
+        isDebt?'debt':'payment',
+        isDebt?'دين':'دفعة',
+        amount,
+        isDebt?'out':'in',
+        isDebt?0:(isCust?amount:-amount),
+        {...extra,note:$('#nt').value.trim()}
+      ));
+      bt.update(doc(db,col,ent.id),{balance:newBalance});
+      await bt.commit();
+      closeModal();
+      toast('✅ تم التسجيل بنجاح');
+      // إشعار واتساب
+      if(isCust&&ent.phone){
+        setTimeout(()=>notifyDebt(ent.name,ent.phone,amount,newBalance,isDebt?'debt':'payment'),400);
+      }
+    }catch(e){
+      console.error(e);
+      $('#err').textContent='فشل: '+(e.code||e.message||'خطأ');
+      $('#err').style.display='block';
+      svBtn.disabled=false;svBtn.textContent='تأكيد';
+    }
   };
 }
 
-/* ========== الموردين ========== */
+/* ===== الموردين ===== */
 function suppliersList(){
   const q=S.q.toLowerCase();
   const list=S.suppliers.filter(s=>!q||s.name.toLowerCase().includes(q)||(s.phone||'').includes(q)).sort((a,b)=>(b.balance||0)-(a.balance||0));
   const total=S.suppliers.reduce((n,s)=>n+Math.max(s.balance||0,0),0);
   A.innerHTML=`
   <div class="top"><h1>الموردين</h1><button class="btn sm" id="add">+ مورد</button></div>
-  <div class="card"><small>إجمالي المستحق للموردين</small><div class="big warn">${fmt(total)}</div><small>${S.suppliers.length} مورد</small></div>
+  <div class="card"><small>إجمالي المستحق</small><div class="big warn">${fmt(total)}</div><small>${S.suppliers.length} مورد</small></div>
   <input id="sr" placeholder="🔎 بحث" value="${esc(S.q)}">
   <div class="card">${list.map(s=>`<div class="item" data-id="${s.id}">
     <div class="row" style="gap:10px"><div class="avatar" style="background:#fdf1e3;color:var(--o)">${esc(initials(s.name))}</div>
@@ -426,7 +446,7 @@ function supplierForm(s){
   modal(`<h2>${edit?'تعديل مورد':'مورد جديد'}</h2>
   <label>الاسم *</label><input id="n" value="${esc(s?.name||'')}">
   <label>الهاتف</label><input id="ph" type="tel" value="${esc(s?.phone||'')}">
-  ${edit?'':`<label>رصيد افتتاحي (مستحق له)</label><input id="op" type="number" placeholder="0">`}
+  ${edit?'':`<label>رصيد افتتاحي</label><input id="op" type="number" placeholder="0">`}
   <div class="row" style="margin-top:12px"><button class="btn o w" onclick="closeModal()">إلغاء</button><button class="btn w" id="sv">حفظ</button></div>`);
   $('#sv').onclick=async()=>{
     const name=$('#n').value.trim();if(!name)return toast('اكتب الاسم');
@@ -451,7 +471,7 @@ function supplierPage(id){
     <h2>${esc(s.name)}</h2><small>${esc(s.phone||'')}</small>
     <div class="big warn" style="margin-top:8px">${fmt(s.balance||0)}</div><small>مستحق للمورد</small>
   </div>
-  <div class="grid2"><button class="btn r" id="db">+ مشتريات آجلة</button><button class="btn" id="pay">+ دفعة</button></div>
+  <div class="grid2"><button class="btn r" id="db">+ مشتريات</button><button class="btn" id="pay">+ دفعة</button></div>
   <div class="card"><div class="row"><b>الحركات (${txs.length})</b><button class="btn g sm" id="pd">PDF</button></div>
     <div>${txs.map(txRow).join('')||'<p class="hint">لا توجد حركات</p>'}</div></div>`;
   $('#bk').onclick=()=>go('suppliers');
@@ -461,7 +481,7 @@ function supplierPage(id){
   $('#pd').onclick=()=>statementPDF(s,txs,'supplier');
 }
 
-/* ========== المخزون ========== */
+/* ===== المخزون ===== */
 function productsList(){
   const q=S.q.toLowerCase();
   const list=S.products.filter(p=>!q||p.name.toLowerCase().includes(q)).sort((a,b)=>a.name.localeCompare(b.name));
@@ -489,10 +509,10 @@ function productForm(p){
   <div><label>الكمية</label><input id="st" type="number" value="${p?.stock??0}"></div></div>
   <div class="grid2"><div><label>سعر التكلفة</label><input id="co" type="number" value="${p?.cost??0}"></div>
   <div><label>سعر البيع</label><input id="pr" type="number" value="${p?.price??0}"></div></div>
-  <label>حد التنبيه (أقل كمية)</label><input id="mn" type="number" value="${p?.min??0}">
+  <label>حد التنبيه</label><input id="mn" type="number" value="${p?.min??0}">
   <div class="row" style="margin-top:12px"><button class="btn o w" onclick="closeModal()">إلغاء</button><button class="btn w" id="sv">حفظ</button></div>`);
   $('#sv').onclick=async()=>{
-    const name=$('#n').value.trim();if(!name)return toast('اكتب اسم المنتج');
+    const name=$('#n').value.trim();if(!name)return toast('اكتب الاسم');
     const data={name,unit:$('#u').value.trim()||'حبة',stock:Number($('#st').value)||0,cost:Number($('#co').value)||0,price:Number($('#pr').value)||0,min:Number($('#mn').value)||0};
     if(edit)await updateDoc(doc(db,'products',p.id),data);
     else await setDoc(doc(collection(db,'products')),{owner:S.user.uid,...data,createdAt:Date.now()});
@@ -500,7 +520,7 @@ function productForm(p){
   };
 }
 
-/* ========== المبيعات ========== */
+/* ===== المبيعات ===== */
 function salesList(){
   const total=S.sales.reduce((n,s)=>n+(s.total||0),0);
   A.innerHTML=`
@@ -508,9 +528,16 @@ function salesList(){
   <div class="card"><small>إجمالي المبيعات</small><div class="big ok">${fmt(total)}</div><small>${S.sales.length} فاتورة</small></div>
   <div class="card">${S.sales.slice(0,60).map(s=>`<div class="item" style="cursor:default">
     <div><b>${esc(s.customerName||'عميل نقدي')}</b><br><small>${dt(s.ts)} · ${s.items?.length||0} صنف</small></div>
-    <div style="text-align:left"><b class="ok">${fmt(s.total)}</b><br><small>${s.due>0?'آجل '+n2(s.due):'نقدي'}</small></div>
+    <div style="text-align:left"><b class="ok">${fmt(s.total)}</b><br>
+      <button class="btn g sm" data-inv="${s.id}" style="padding:3px 8px;font-size:.7rem;margin-top:4px">🖨️ فاتورة</button>
+    </div>
   </div>`).join('')||'<p class="hint">لا توجد فواتير</p>'}</div>`;
   $('#add').onclick=()=>go('sale-new');
+  A.querySelectorAll('[data-inv]').forEach(b=>b.onclick=e=>{
+    e.stopPropagation();
+    const sale=S.sales.find(x=>x.id===b.dataset.inv);
+    if(sale)invoicePDF(sale,'sale');
+  });
 }
 function saleNew(){
   S.formOpen=true;
@@ -529,7 +556,7 @@ function saleNew(){
   </div>
   <div class="card"><b>الأصناف</b><div id="cart"></div></div>
   <div class="card">
-   <div class="row"><span>الإجمالي</span><b class="mid" id="tot">0</b></div>
+   <div class="row"><span>الإجمالي</span><b class="ok" id="tot">0</b></div>
    <label>المدفوع نقداً</label><input id="paid" type="number" placeholder="0">
    <button class="btn w" id="save">💾 حفظ الفاتورة</button>
   </div>`;
@@ -570,10 +597,20 @@ async function saveSale(){
     bt.update(doc(db,'accounts',custId),{balance:increment(due)});
   }
   await bt.commit();
-  S.formOpen=false;S.cart=[];toast('تم حفظ الفاتورة');go('sales');
+  const savedSale={id:saleRef.id,ts:Date.now(),customerName:cust?.name||'عميل نقدي',items:[...S.cart],total,paid,due};
+  S.formOpen=false;S.cart=[];
+  toast('✅ تم حفظ الفاتورة');
+  go('sales');
+  // عرض خيار طباعة الفاتورة
+  setTimeout(()=>{
+    modal(`<h2>تم حفظ الفاتورة ✅</h2>
+    <p style="margin:10px 0;font-size:.9rem">هل تريد طباعة الفاتورة؟</p>
+    <div class="row"><button class="btn o w" onclick="closeModal()">إغلاق</button><button class="btn w" id="pv-print">🖨️ طباعة PDF</button></div>`);
+    $('#pv-print').onclick=()=>{closeModal();invoicePDF(savedSale,'sale')};
+  },500);
 }
 
-/* ========== المشتريات ========== */
+/* ===== المشتريات ===== */
 function purchasesList(){
   const total=S.purchases.reduce((n,s)=>n+(s.total||0),0);
   A.innerHTML=`
@@ -581,9 +618,16 @@ function purchasesList(){
   <div class="card"><small>إجمالي المشتريات</small><div class="big warn">${fmt(total)}</div><small>${S.purchases.length} فاتورة</small></div>
   <div class="card">${S.purchases.slice(0,60).map(s=>`<div class="item" style="cursor:default">
     <div><b>${esc(s.supplierName||'مورد')}</b><br><small>${dt(s.ts)} · ${s.items?.length||0} صنف</small></div>
-    <div style="text-align:left"><b class="warn">${fmt(s.total)}</b><br><small>${s.due>0?'آجل '+n2(s.due):'نقدي'}</small></div>
+    <div style="text-align:left"><b class="warn">${fmt(s.total)}</b><br>
+      <button class="btn g sm" data-inv="${s.id}" style="padding:3px 8px;font-size:.7rem;margin-top:4px">🖨️ فاتورة</button>
+    </div>
   </div>`).join('')||'<p class="hint">لا توجد فواتير</p>'}</div>`;
   $('#add').onclick=()=>go('purchase-new');
+  A.querySelectorAll('[data-inv]').forEach(b=>b.onclick=e=>{
+    e.stopPropagation();
+    const p=S.purchases.find(x=>x.id===b.dataset.inv);
+    if(p)invoicePDF(p,'purchase');
+  });
 }
 function purchaseNew(){
   S.formOpen=true;
@@ -603,7 +647,7 @@ function purchaseNew(){
   </div>
   <div class="card"><b>الأصناف</b><div id="cart"></div></div>
   <div class="card">
-   <div class="row"><span>الإجمالي</span><b class="mid" id="tot">0</b></div>
+   <div class="row"><span>الإجمالي</span><b class="warn" id="tot">0</b></div>
    <label>المدفوع نقداً</label><input id="paid" type="number" placeholder="0">
    <button class="btn w" id="save">💾 حفظ الفاتورة</button>
   </div>`;
@@ -637,10 +681,19 @@ async function savePurchase(){
     bt.update(doc(db,'suppliers',supId),{balance:increment(due)});
   }
   await bt.commit();
-  S.formOpen=false;S.cart=[];toast('تم حفظ الفاتورة');go('purchases');
+  const savedPur={id:ref.id,ts:Date.now(),supplierName:sup?.name||'مورد نقدي',items:[...S.cart],total,paid,due};
+  S.formOpen=false;S.cart=[];
+  toast('✅ تم حفظ الفاتورة');
+  go('purchases');
+  setTimeout(()=>{
+    modal(`<h2>تم حفظ الفاتورة ✅</h2>
+    <p style="margin:10px 0;font-size:.9rem">هل تريد طباعة الفاتورة؟</p>
+    <div class="row"><button class="btn o w" onclick="closeModal()">إغلاق</button><button class="btn w" id="pv-print">🖨️ طباعة PDF</button></div>`);
+    $('#pv-print').onclick=()=>{closeModal();invoicePDF(savedPur,'purchase')};
+  },500);
 }
 
-/* ========== المصروفات ========== */
+/* ===== المصروفات ===== */
 function expensesList(){
   const total=S.expenses.reduce((n,e)=>n+(e.amount||0),0);
   A.innerHTML=`
@@ -668,13 +721,141 @@ function expenseForm(){
   };
 }
 
-/* ========== التقارير ========== */
+/* ===== الموظفين ===== */
+function employeesList(){
+  const q=S.q.toLowerCase();
+  const list=S.employees.filter(e=>!q||e.name.toLowerCase().includes(q)||(e.phone||'').includes(q));
+  const totalAdv=S.employees.reduce((n,e)=>n+Math.max(e.balance||0,0),0);
+  const monthly=S.employees.reduce((n,e)=>n+(Number(e.salary)||0),0);
+  A.innerHTML=`
+  <div class="top"><h1>الموظفين</h1><button class="btn sm" id="add">+ موظف</button></div>
+  <div class="grid3">
+    <div class="stat"><div class="l">عدد الموظفين</div><div class="n">${S.employees.length}</div></div>
+    <div class="stat"><div class="l">سحبيات</div><div class="n purple">${fmt(totalAdv)}</div></div>
+    <div class="stat"><div class="l">رواتب شهرية</div><div class="n warn">${fmt(monthly)}</div></div>
+  </div>
+  <input id="sr" placeholder="🔎 بحث" value="${esc(S.q)}">
+  <div class="card">${list.map(e=>`<div class="item" data-id="${e.id}">
+    <div class="row" style="gap:10px"><div class="avatar" style="background:#eae5fd;color:var(--p)">${esc(initials(e.name))}</div>
+    <div><b>${esc(e.name)}</b><br><small>${esc(e.position||'—')} ${e.phone?'· '+esc(e.phone):''}</small></div></div>
+    <div style="text-align:left">
+      <span class="${(e.balance||0)>0?'purple':'ok'}">${fmt(e.balance||0)}</span><br>
+      <small>الراتب ${n2(e.salary)}</small>
+    </div></div>`).join('')||'<p class="hint">لا يوجد موظفين</p>'}</div>`;
+  $('#add').onclick=()=>employeeForm();
+  $('#sr').oninput=e=>{S.q=e.target.value;employeesList();$('#sr').focus()};
+  A.querySelectorAll('[data-id]').forEach(e=>e.onclick=()=>go('employee',e.dataset.id));
+}
+function employeeForm(emp){
+  const edit=!!emp;
+  modal(`<h2>${edit?'تعديل موظف':'موظف جديد'}</h2>
+  <label>الاسم *</label><input id="n" value="${esc(emp?.name||'')}">
+  <label>الوظيفة</label><input id="po" value="${esc(emp?.position||'')}" placeholder="مثال: كاشير، عامل">
+  <label>الهاتف</label><input id="ph" type="tel" value="${esc(emp?.phone||'')}">
+  <label>الراتب الشهري</label><input id="sa" type="number" value="${emp?.salary??0}">
+  ${edit?'':`<label>سحبيات سابقة</label><input id="op" type="number" placeholder="0">`}
+  <div class="row" style="margin-top:12px"><button class="btn o w" onclick="closeModal()">إلغاء</button><button class="btn w" id="sv">حفظ</button></div>`);
+  $('#sv').onclick=async()=>{
+    const name=$('#n').value.trim();if(!name)return toast('اكتب الاسم');
+    const data={name,position:$('#po').value.trim(),phone:$('#ph').value.trim(),salary:Number($('#sa').value)||0};
+    if(edit){await updateDoc(doc(db,'employees',emp.id),data);}
+    else{
+      const op=Number($('#op').value)||0;
+      await setDoc(doc(collection(db,'employees')),{owner:S.user.uid,...data,balance:op,createdAt:Date.now()});
+      if(op>0){
+        // سجل السحبيات السابقة في اليومية
+        await setDoc(newLedgerRef(),ledgerData('advance','سحبيات سابقة',op,'out',-op,{employeeId:''}));
+      }
+    }
+    closeModal();toast('تم الحفظ');
+  };
+}
+function employeePage(id){
+  const emp=S.employees.find(x=>x.id===id);if(!emp)return go('employees');
+  const txs=S.ledger.filter(l=>l.employeeId===id).sort((a,b)=>b.ts-a.ts);
+  const totalAdv=txs.filter(t=>t.type==='advance').reduce((n,t)=>n+t.amount,0);
+  const totalSal=txs.filter(t=>t.type==='salary').reduce((n,t)=>n+t.amount,0);
+  const totalBonus=txs.filter(t=>t.type==='bonus').reduce((n,t)=>n+t.amount,0);
+  const totalDed=txs.filter(t=>t.type==='deduction').reduce((n,t)=>n+t.amount,0);
+  A.innerHTML=`
+  <div class="top"><button class="btn g sm" id="bk">→ رجوع</button><button class="btn g sm" id="ed">تعديل</button></div>
+  <div class="card" style="text-align:center">
+    <div class="avatar" style="margin:0 auto 6px;width:56px;height:56px;font-size:1.3rem;background:#eae5fd;color:var(--p)">${esc(initials(emp.name))}</div>
+    <h2>${esc(emp.name)}</h2><small>${esc(emp.position||'')} ${emp.phone?'· '+esc(emp.phone):''}</small>
+    <div class="big ${(emp.balance||0)>0?'purple':'ok'}" style="margin-top:8px">${fmt(emp.balance||0)}</div>
+    <small>${(emp.balance||0)>0?'سحبيات مستحقة عليه':(emp.balance||0)<0?'رصيد له':'لا توجد سحبيات'}</small>
+    <div style="margin-top:8px;font-size:.85rem"><b>الراتب الشهري:</b> ${fmt(emp.salary||0)}</div>
+  </div>
+  <div class="grid2">
+    <button class="btn p" id="adv">+ سحبية</button>
+    <button class="btn" id="pay">+ دفع راتب</button>
+  </div>
+  <div class="grid2" style="margin-top:8px">
+    <button class="btn o" id="bon">+ مكافأة</button>
+    <button class="btn o r" id="ded">- خصم</button>
+  </div>
+  <div class="card">
+    <div class="grid2" style="font-size:.8rem">
+      <div><small>إجمالي السحبيات</small><br><b class="purple">${fmt(totalAdv)}</b></div>
+      <div><small>إجمالي الرواتب</small><br><b class="ok">${fmt(totalSal)}</b></div>
+      <div><small>إجمالي المكافآت</small><br><b class="ok">${fmt(totalBonus)}</b></div>
+      <div><small>إجمالي الخصومات</small><br><b class="due">${fmt(totalDed)}</b></div>
+    </div>
+  </div>
+  <div class="card"><div class="row"><b>الحركات (${txs.length})</b><button class="btn g sm" id="pd">PDF</button></div>
+    <div>${txs.map(txRow).join('')||'<p class="hint">لا توجد حركات</p>'}</div></div>`;
+  $('#bk').onclick=()=>go('employees');
+  $('#ed').onclick=()=>employeeForm(emp);
+  $('#adv').onclick=()=>employeeAmountForm('advance',emp);
+  $('#pay').onclick=()=>employeeAmountForm('salary',emp);
+  $('#bon').onclick=()=>employeeAmountForm('bonus',emp);
+  $('#ded').onclick=()=>employeeAmountForm('deduction',emp);
+  $('#pd').onclick=()=>employeeStatementPDF(emp,txs);
+}
+function employeeAmountForm(type,emp){
+  const labels={
+    advance:{title:'تسجيل سحبية',sub:'الموظف يأخذ نقوداً من الصندوق',sign:+1,cash:-1,dir:'out'},
+    salary:{title:'دفع راتب',sub:'خصم من الرصيد وتسليم نقود',sign:-1,cash:-1,dir:'out'},
+    bonus:{title:'مكافأة',sub:'تخفيض المستحق عليه كمكافأة',sign:-1,cash:0,dir:'out'},
+    deduction:{title:'خصم/جزاء',sub:'زيادة المستحق عليه كعقوبة',sign:+1,cash:0,dir:'in'}
+  };
+  const L=labels[type];
+  modal(`<h2>${L.title} - ${esc(emp.name)}</h2>
+  <p style="margin:6px 0;color:#6b7b72;font-size:.82rem">${L.sub}</p>
+  <label>المبلغ</label><input id="am" type="number" inputmode="decimal" placeholder="0">
+  <label>ملاحظة</label><input id="nt" placeholder="اختياري">
+  <div id="err" style="color:#d6383d;font-size:.8rem;margin-top:6px;display:none"></div>
+  <div class="row" style="margin-top:12px"><button class="btn o w" onclick="closeModal()">إلغاء</button><button class="btn w" id="sv">تأكيد</button></div>`);
+  $('#sv').onclick=async()=>{
+    const amount=Number($('#am').value);
+    if(!(amount>0))return toast('أدخل مبلغاً صحيحاً');
+    const svBtn=$('#sv');svBtn.disabled=true;svBtn.textContent='جارٍ الحفظ...';
+    try{
+      const newBalance=(Number(emp.balance)||0)+L.sign*amount;
+      const cash=L.cash*amount;
+      const bt=writeBatch(db);
+      bt.set(newLedgerRef(),ledgerData(type,L.title,amount,L.dir,cash,{employeeId:emp.id,note:$('#nt').value.trim()}));
+      bt.update(doc(db,'employees',emp.id),{balance:newBalance});
+      await bt.commit();
+      closeModal();
+      toast('✅ تم التسجيل');
+    }catch(e){
+      console.error(e);
+      $('#err').textContent='فشل: '+(e.code||e.message);
+      $('#err').style.display='block';
+      svBtn.disabled=false;svBtn.textContent='تأكيد';
+    }
+  };
+}
+
+/* ===== التقارير ===== */
 function reportsView(){
   const totalSales=S.sales.reduce((n,s)=>n+(s.total||0),0);
   const totalPurch=S.purchases.reduce((n,s)=>n+(s.total||0),0);
   const totalExp=S.expenses.reduce((n,e)=>n+(e.amount||0),0);
   const recv=S.customers.reduce((n,c)=>n+Math.max(c.balance||0,0),0);
   const pay=S.suppliers.reduce((n,s)=>n+Math.max(s.balance||0,0),0);
+  const empAdv=S.employees.reduce((n,e)=>n+Math.max(e.balance||0,0),0);
   const cash=S.ledger.reduce((n,l)=>n+(l.cash||0),0);
   const profit=totalSales-totalPurch-totalExp;
   A.innerHTML=`
@@ -686,6 +867,8 @@ function reportsView(){
     <div class="stat"><div class="l">صافي الربح التقديري</div><div class="n ${profit>=0?'ok':'due'}">${fmt(profit)}</div></div>
     <div class="stat"><div class="l">ديون العملاء</div><div class="n due">${fmt(recv)}</div></div>
     <div class="stat"><div class="l">مستحق للموردين</div><div class="n warn">${fmt(pay)}</div></div>
+    <div class="stat"><div class="l">سحبيات الموظفين</div><div class="n purple">${fmt(empAdv)}</div></div>
+    <div class="stat"><div class="l">النقدية بالصندوق</div><div class="n ok">${fmt(cash)}</div></div>
   </div>
   <div class="card"><b>المبيعات آخر 7 أيام</b><canvas id="ch" height="150"></canvas></div>
   <div class="card"><b>ملخص الحسابات</b>
@@ -693,6 +876,7 @@ function reportsView(){
     <tr><td>النقدية بالصندوق</td><td class="ok">${fmt(cash)}</td></tr>
     <tr><td>ديون العملاء</td><td class="due">${fmt(recv)}</td></tr>
     <tr><td>مستحق للموردين</td><td class="warn">${fmt(pay)}</td></tr>
+    <tr><td>سحبيات الموظفين</td><td class="purple">${fmt(empAdv)}</td></tr>
     <tr><td>قيمة المخزون</td><td>${fmt(S.products.reduce((n,p)=>n+(p.stock||0)*(p.cost||0),0))}</td></tr>
     </table></div>`;
   $('#pd').onclick=reportsPDF;
@@ -712,6 +896,7 @@ function reportsPDF(){
   const totalExp=S.expenses.reduce((n,e)=>n+(e.amount||0),0);
   const recv=S.customers.reduce((n,c)=>n+Math.max(c.balance||0,0),0);
   const pay=S.suppliers.reduce((n,s)=>n+Math.max(s.balance||0,0),0);
+  const empAdv=S.employees.reduce((n,e)=>n+Math.max(e.balance||0,0),0);
   const cash=S.ledger.reduce((n,l)=>n+(l.cash||0),0);
   exportPDF('تقرير مالي شامل',`<table border="1" cellspacing="0" cellpadding="8" style="width:100%;border-collapse:collapse;font-size:13px">
   <tr style="background:#eef3f0"><th>البند</th><th>المبلغ</th></tr>
@@ -722,13 +907,14 @@ function reportsPDF(){
   <tr><td>النقدية بالصندوق</td><td>${fmt(cash)}</td></tr>
   <tr><td>ديون العملاء</td><td>${fmt(recv)}</td></tr>
   <tr><td>مستحق للموردين</td><td>${fmt(pay)}</td></tr>
+  <tr><td>سحبيات الموظفين</td><td>${fmt(empAdv)}</td></tr>
   <tr><td>قيمة المخزون</td><td>${fmt(S.products.reduce((n,p)=>n+(p.stock||0)*(p.cost||0),0))}</td></tr>
   </table>`);
 }
 
-/* ========== دفتر اليومية ========== */
+/* ===== دفتر اليومية ===== */
 function ledgerView(){
-  const types=[['','الكل'],['sale','مبيعات'],['purchase','مشتريات'],['debt','ديون'],['payment','دفعات'],['expense','مصروفات']];
+  const types=[['','الكل'],['sale','مبيعات'],['purchase','مشتريات'],['debt','ديون'],['payment','دفعات'],['expense','مصروفات'],['advance','سحبيات'],['salary','رواتب']];
   const cur=S._lt||'';
   const list=S.ledger.filter(l=>!cur||l.type===cur);
   A.innerHTML=`
@@ -740,7 +926,7 @@ function ledgerView(){
   A.querySelectorAll('[data-t]').forEach(b=>b.onclick=()=>{S._lt=b.dataset.t;ledgerView()});
 }
 
-/* ========== الإعدادات ========== */
+/* ===== الإعدادات ===== */
 function settingsView(){
   A.innerHTML=`
   <div class="top"><h1>الإعدادات</h1></div>
@@ -749,6 +935,10 @@ function settingsView(){
     <label>العملة</label><input id="cu" value="${esc(S.settings.currency)}">
     <label>الهاتف</label><input id="ph" value="${esc(S.settings.phone||'')}">
     <label>العنوان</label><input id="ad" value="${esc(S.settings.address||'')}">
+    <div class="row" style="margin-top:12px">
+      <div><b>إشعار واتساب تلقائي</b><br><small>عند تسجيل دين أو دفعة</small></div>
+      <label class="switch"><input type="checkbox" id="wa" ${S.settings.autoWhatsApp?'checked':''}><span class="slider"></span></label>
+    </div>
     <button class="btn w" id="sv" style="margin-top:10px">حفظ الإعدادات</button>
   </div>
   <div class="card">
@@ -756,23 +946,23 @@ function settingsView(){
     <button class="btn o r w" id="out" style="margin-top:8px">تسجيل الخروج</button>
   </div>`;
   $('#sv').onclick=async()=>{
-    S.settings={...S.settings,name:$('#nm').value.trim()||'الكامل سوفت',currency:$('#cu').value.trim()||'ر.ي',phone:$('#ph').value.trim(),address:$('#ad').value.trim()};
+    S.settings={...S.settings,name:$('#nm').value.trim()||'الكامل سوفت',currency:$('#cu').value.trim()||'ر.ي',
+      phone:$('#ph').value.trim(),address:$('#ad').value.trim(),autoWhatsApp:$('#wa').checked};
     await setDoc(doc(db,'settings',S.user.uid),S.settings,{merge:true});
     toast('تم الحفظ');render();
   };
   $('#bk').onclick=()=>{
-    const data={settings:S.settings,customers:S.customers,suppliers:S.suppliers,products:S.products,sales:S.sales,purchases:S.purchases,expenses:S.expenses,ledger:S.ledger};
+    const data={settings:S.settings,customers:S.customers,suppliers:S.suppliers,products:S.products,sales:S.sales,purchases:S.purchases,expenses:S.expenses,ledger:S.ledger,employees:S.employees};
     const blob=new Blob([JSON.stringify(data,null,2)],{type:'application/json'});
     const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download='backup-'+Date.now()+'.json';a.click();
   };
   $('#out').onclick=async()=>{
     if(!confirm('هل تريد تسجيل الخروج؟'))return;
-    try{await signOut(auth);toast('تم تسجيل الخروج')}
-    catch(e){toast('تعذّر تسجيل الخروج')}
+    try{await signOut(auth);toast('تم تسجيل الخروج')}catch(e){toast('تعذّر تسجيل الخروج')}
   };
 }
 
-/* ========== PDF ========== */
+/* ===== PDF ===== */
 function exportPDF(title,html){
   const box=document.createElement('div');
   box.style.cssText='font-family:Tahoma,Arial;direction:rtl;padding:20px;color:#111;background:#fff;width:760px';
@@ -780,7 +970,7 @@ function exportPDF(title,html){
   <h3 style="text-align:center;margin:6px 0 18px">${esc(title)}</h3>${html}
   <div style="margin-top:28px;text-align:center;font-size:11px;color:#888">تم الإنشاء: ${new Date().toLocaleString('ar-EG')}</div>`;
   document.body.appendChild(box);
-  html2pdf().set({margin:10,filename:title+'.pdf',html2canvas:{scale:2,useCORS:true},jsPDF:{unit:'mm',format:'a4',orientation:'portrait'}})
+  html2pdf().set({margin:10,filename:title.replace(/[^\w\u0600-\u06FF]+/g,'_')+'.pdf',html2canvas:{scale:2,useCORS:true},jsPDF:{unit:'mm',format:'a4',orientation:'portrait'}})
     .from(box).save().then(()=>box.remove()).catch(()=>{box.remove();toast('تعذّر التصدير')});
 }
 function statementPDF(ent,txs,kind){
@@ -791,8 +981,64 @@ function statementPDF(ent,txs,kind){
   <tr style="background:#eef3f0"><th>التاريخ</th><th>البيان</th><th>ملاحظة</th><th>المبلغ</th></tr>${rows||'<tr><td colspan="4">لا توجد حركات</td></tr>'}</table>
   <h3 style="margin-top:14px;color:${(ent.balance||0)>0?'#d6383d':'#0f7a55'}">الرصيد الحالي: ${fmt(ent.balance||0)}</h3>`);
 }
+function employeeStatementPDF(emp,txs){
+  const rows=txs.map(l=>`<tr><td>${dOnly(l.ts)}</td><td>${esc(l.label)}</td><td>${esc(l.note||'')}</td>
+    <td style="color:${l.type==='advance'||l.type==='deduction'?'#7a4ddb':'#0f7a55'}">${n2(l.amount)}</td></tr>`).join('');
+  exportPDF('كشف حساب موظف - '+emp.name,
+  `<div style="display:flex;justify-content:space-between;margin-bottom:10px;font-size:13px">
+    <div><b>الوظيفة:</b> ${esc(emp.position||'—')}</div>
+    <div><b>الهاتف:</b> ${esc(emp.phone||'—')}</div>
+    <div><b>الراتب:</b> ${fmt(emp.salary||0)}</div>
+  </div>
+  <table border="1" cellspacing="0" cellpadding="6" style="width:100%;border-collapse:collapse;font-size:12px">
+  <tr style="background:#eef3f0"><th>التاريخ</th><th>البيان</th><th>ملاحظة</th><th>المبلغ</th></tr>${rows||'<tr><td colspan="4">لا توجد حركات</td></tr>'}</table>
+  <h3 style="margin-top:14px;color:${(emp.balance||0)>0?'#7a4ddb':'#0f7a55'}">الرصيد: ${fmt(emp.balance||0)}</h3>`);
+}
+function invoicePDF(rec,kind){
+  const isSale=kind==='sale';
+  const rows=rec.items.map((i,idx)=>`<tr>
+    <td style="text-align:center">${idx+1}</td>
+    <td>${esc(i.name)}</td>
+    <td style="text-align:center">${n2(i.qty)}</td>
+    <td style="text-align:center">${n2(i.price)}</td>
+    <td style="text-align:center">${n2(i.qty*i.price)}</td>
+  </tr>`).join('');
+  const party=isSale?(rec.customerName||'عميل نقدي'):(rec.supplierName||'مورد نقدي');
+  const partyLabel=isSale?'العميل':'المورد';
+  const title=(isSale?'فاتورة بيع':'فاتورة شراء')+' رقم '+(rec.id||'').slice(-6).toUpperCase();
+  exportPDF(title,
+  `<div style="display:flex;justify-content:space-between;margin-bottom:14px;font-size:13px">
+    <div><b>${partyLabel}:</b> ${esc(party)}</div>
+    <div><b>التاريخ:</b> ${dt(rec.ts)}</div>
+  </div>
+  <table border="1" cellspacing="0" cellpadding="8" style="width:100%;border-collapse:collapse;font-size:12px">
+    <tr style="background:#0f7a55;color:#fff">
+      <th style="width:40px">#</th>
+      <th>الصنف</th>
+      <th style="width:70px">الكمية</th>
+      <th style="width:80px">السعر</th>
+      <th style="width:100px">الإجمالي</th>
+    </tr>
+    ${rows}
+    <tr style="background:#f8faf9;font-weight:bold">
+      <td colspan="4" style="text-align:left">الإجمالي</td>
+      <td style="text-align:center">${fmt(rec.total)}</td>
+    </tr>
+    <tr>
+      <td colspan="4" style="text-align:left">المدفوع</td>
+      <td style="text-align:center;color:#0f7a55">${fmt(rec.paid)}</td>
+    </tr>
+    ${rec.due>0?`<tr>
+      <td colspan="4" style="text-align:left">المتبقي (آجل)</td>
+      <td style="text-align:center;color:#d6383d;font-weight:bold">${fmt(rec.due)}</td>
+    </tr>`:''}
+  </table>
+  <p style="margin-top:20px;text-align:center;font-size:12px;color:#6b7b72">
+    شكراً لتعاملكم معنا 🌹<br>${esc(S.settings.name)} ${S.settings.phone?'· '+esc(S.settings.phone):''}
+  </p>`);
+}
 
-/* ========== واجهة العميل العامة ========== */
+/* ===== واجهة العميل العامة ===== */
 function publicView(tk){
   N.innerHTML='';
   A.innerHTML=`
@@ -801,9 +1047,7 @@ function publicView(tk){
       <h1>كشف حساب</h1>
       <p id="pub-store">جاري التحميل...</p>
     </div>
-    <div class="pub-card pub-balance-card" id="acc">
-      <div class="hint">جاري تحميل البيانات...</div>
-    </div>
+    <div class="pub-card pub-balance-card" id="acc"><div class="hint">جاري تحميل البيانات...</div></div>
     <div class="pub-card" id="pub-summary" style="display:none">
       <div class="grid2">
         <div class="pub-stat"><small>إجمالي الديون</small><b class="due" id="pub-debt">0</b></div>
@@ -817,69 +1061,42 @@ function publicView(tk){
     <button class="btn w" onclick="window.print()">🖨️ طباعة / حفظ PDF</button>
     <p style="text-align:center;margin-top:15px;font-size:.7rem;color:#888">تم الإنشاء بواسطة ${esc(S.settings.name)}</p>
   `;
-
   onSnapshot(doc(db,'accounts',tk),s=>{
-    if(!s.exists()){ $('#acc').innerHTML='<p class="hint">الرابط غير صحيح. اطلب رابطاً جديداً من المتجر.</p>'; return; }
+    if(!s.exists()){$('#acc').innerHTML='<p class="hint">الرابط غير صحيح.</p>';return}
     const a=s.data();
-    $('#pub-store').textContent = S.settings.name || 'كشف حسابي';
+    $('#pub-store').textContent=S.settings.name||'كشف حسابي';
     $('#acc').innerHTML=`
       <div class="avatar" style="margin:0 auto 10px;width:60px;height:60px;font-size:1.5rem;background:#eaf5f0;color:#0f7a55">${esc(initials(a.name))}</div>
       <h2>${esc(a.name)}</h2>
       <div class="big ${(a.balance||0)>0?'due':'ok'}" style="margin:10px 0">${n2(Math.abs(a.balance||0))} ${esc(a.currency||'')}</div>
-      <div class="pub-status ${(a.balance||0)>0?'due':(a.balance||0)<0?'ok':''}">${(a.balance||0)>0?'المبلغ المطلوب منك':(a.balance||0)<0?'رصيد لك':'الحساب مسدد'}</div>
-    `;
+      <div class="pub-status ${(a.balance||0)>0?'due':(a.balance||0)<0?'ok':''}">${(a.balance||0)>0?'المبلغ المطلوب منك':(a.balance||0)<0?'رصيد لك':'الحساب مسدد'}</div>`;
   });
-
   const processTx = (arr) => arr.map(d => {
     const x = d.data ? d.data() : d;
-    return {
-      id: d.id,
-      type: x.type || 'debt',
-      amount: Number(x.amount) || 0,
-      label: x.label || (x.type === 'debt' ? 'دين' : 'دفعة'),
-      note: x.note || '',
-      ts: x.ts || Date.now(),
-      dir: x.dir || (x.type === 'debt' ? 'out' : 'in')
-    };
+    return {id:d.id,type:x.type||'debt',amount:Number(x.amount)||0,
+      label:x.label||(x.type==='debt'?'دين':'دفعة'),note:x.note||'',
+      ts:x.ts||Date.now(),dir:x.dir||(x.type==='debt'?'out':'in')};
   });
-
-  let allTxs = { ledger: [], old: [] };
-
-  const renderTxs = () => {
-    const merged = [...allTxs.ledger, ...allTxs.old].sort((a,b) => b.ts - a.ts);
-    const totalDebt = merged.filter(t => t.dir === 'out').reduce((n,t) => n + t.amount, 0);
-    const totalPay = merged.filter(t => t.dir === 'in').reduce((n,t) => n + t.amount, 0);
-
-    $('#pub-debt').textContent = fmt(totalDebt);
-    $('#pub-pay').textContent = fmt(totalPay);
-    $('#pub-summary').style.display = merged.length ? 'block' : 'none';
-
-    $('#txs').innerHTML = merged.length ? merged.map(t => `
+  let allTxs={ledger:[],old:[]};
+  const renderTxs=()=>{
+    const merged=[...allTxs.ledger,...allTxs.old].sort((a,b)=>b.ts-a.ts);
+    const totalDebt=merged.filter(t=>t.dir==='out').reduce((n,t)=>n+t.amount,0);
+    const totalPay=merged.filter(t=>t.dir==='in').reduce((n,t)=>n+t.amount,0);
+    $('#pub-debt').textContent=fmt(totalDebt);
+    $('#pub-pay').textContent=fmt(totalPay);
+    $('#pub-summary').style.display=merged.length?'block':'none';
+    $('#txs').innerHTML=merged.length?merged.map(t=>`
       <div class="pub-tx">
-        <div class="pub-tx-icon ${t.dir === 'in' ? 'ok' : 'due'}">${t.dir === 'in' ? '↓' : '↑'}</div>
-        <div class="pub-tx-info">
-          <b>${esc(t.label)}</b>
-          <small>${dt(t.ts)} ${t.note ? '· ' + esc(t.note) : ''}</small>
-        </div>
-        <div class="pub-tx-amount ${t.dir === 'in' ? 'ok' : 'due'}">
-          ${t.dir === 'in' ? '-' : '+'}${n2(t.amount)}
-        </div>
-      </div>
-    `).join('') : '<p class="hint" style="text-align:center;padding:20px 0">لا توجد حركات مسجلة بعد</p>';
+        <div class="pub-tx-icon ${t.dir==='in'?'ok':'due'}">${t.dir==='in'?'↓':'↑'}</div>
+        <div class="pub-tx-info"><b>${esc(t.label)}</b><small>${dt(t.ts)} ${t.note?'· '+esc(t.note):''}</small></div>
+        <div class="pub-tx-amount ${t.dir==='in'?'ok':'due'}">${t.dir==='in'?'-':'+'}${n2(t.amount)}</div>
+      </div>`).join(''):'<p class="hint" style="text-align:center;padding:20px 0">لا توجد حركات مسجلة بعد</p>';
   };
-
-  onSnapshot(query(collection(db,'ledger'), where('accountId','==',tk)), s => {
-    allTxs.ledger = processTx(s.docs);
-    renderTxs();
-  });
-
-  onSnapshot(query(collection(db,'accounts',tk,'tx'), orderBy('ts','desc')), s => {
-    allTxs.old = processTx(s.docs);
-    renderTxs();
-  }, (e) => console.log('لا توجد حركات قديمة'));
+  onSnapshot(query(collection(db,'ledger'),where('accountId','==',tk)),s=>{allTxs.ledger=processTx(s.docs);renderTxs()});
+  onSnapshot(query(collection(db,'accounts',tk,'tx'),orderBy('ts','desc')),s=>{allTxs.old=processTx(s.docs);renderTxs()},e=>console.log('no old tx'));
 }
 
-/* ========== التهيئة ========== */
+/* ===== التهيئة ===== */
 async function loadSettings(){
   try{const d=await getDoc(doc(db,'settings',S.user.uid));if(d.exists())S.settings={...S.settings,...d.data()}}catch(e){}
 }
@@ -896,6 +1113,7 @@ function attach(){
   sub('purchases',d=>S.purchases=d.sort((a,b)=>b.ts-a.ts));
   sub('expenses',d=>S.expenses=d.sort((a,b)=>b.ts-a.ts));
   sub('ledger',d=>S.ledger=d.sort((a,b)=>b.ts-a.ts));
+  sub('employees',d=>S.employees=d.sort((a,b)=>a.name.localeCompare(b.name)));
 }
 
 const tk=new URLSearchParams(location.search).get('c');
