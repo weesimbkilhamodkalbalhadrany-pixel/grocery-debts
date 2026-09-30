@@ -53,19 +53,15 @@ th,td{padding:7px;border-bottom:1px solid var(--bd);text-align:right}
 .pub-logo { width: 60px; height: 60px; background: #0f7a55; color: #fff; border-radius: 16px; display: flex; align-items: center; justify-content: center; font-size: 1.8rem; margin: 0 auto 10px; box-shadow: 0 4px 12px rgba(15,122,85,.3); }
 .pub-header h1 { font-size: 1.3rem; color: #16241d; }
 .pub-header p { color: #6b7b72; font-size: .85rem; }
-
 .pub-card { background: #fff; border-radius: 16px; padding: 16px; margin-bottom: 12px; border: 1px solid #dde7e1; box-shadow: 0 2px 10px rgba(0,0,0,.03); }
-
 .pub-balance-card { text-align: center; padding: 25px 16px; }
 .pub-balance-card h2 { font-size: 1.1rem; margin-bottom: 5px; }
 .pub-status { display: inline-block; padding: 4px 12px; border-radius: 20px; font-size: .75rem; font-weight: bold; background: #f0f4f2; color: #6b7b72; }
 .pub-status.due { background: #fdf0f0; color: #d6383d; }
 .pub-status.ok { background: #eaf5f0; color: #0f7a55; }
-
 .pub-stat { text-align: center; padding: 10px; background: #f8faf9; border-radius: 10px; }
 .pub-stat small { display: block; margin-bottom: 4px; }
 .pub-stat b { font-size: 1rem; }
-
 .pub-tx { display: flex; align-items: center; padding: 12px 0; border-bottom: 1px dashed #dde7e1; }
 .pub-tx:last-child { border-bottom: 0; }
 .pub-tx-icon { width: 36px; height: 36px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: bold; font-size: 1.1rem; flex-shrink: 0; margin-left: 10px; }
@@ -93,7 +89,9 @@ th,td{padding:7px;border-bottom:1px solid var(--bd);text-align:right}
 
 <script type="module">
 import{initializeApp}from"https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
-import{getAuth,GoogleAuthProvider,signInWithPopup,onAuthStateChanged,signOut}from"https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
+import{getAuth,GoogleAuthProvider,signInWithPopup,onAuthStateChanged,signOut,
+signInWithEmailAndPassword,createUserWithEmailAndPassword,sendPasswordResetEmail,
+setPersistence,browserLocalPersistence}from"https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
 import{getFirestore,doc,setDoc,getDoc,collection,query,where,orderBy,onSnapshot,writeBatch,increment,deleteDoc,updateDoc}from"https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
 
 const fb=initializeApp({apiKey:"AIzaSyDaLsIF93OD-Lr9y51j_s4wB9OzahLUiTQ",authDomain:"grocery-debts.firebaseapp.com",projectId:"grocery-debts",storageBucket:"grocery-debts.firebasestorage.app",messagingSenderId:"484535933298",appId:"1:484535933298:web:87f8e2ea08a6d26231e5eb"});
@@ -113,7 +111,7 @@ const initials=s=>(s||'?').trim()[0]||'?';
 const startDay=d=>{const x=new Date(d);x.setHours(0,0,0,0);return x.getTime()};
 
 /* ========== الحالة ========== */
-const S={user:null,view:'dashboard',customerId:null,supplierId:null,productId:null,
+const S={user:null,view:'dashboard',_authTab:'login',customerId:null,supplierId:null,productId:null,
 customers:[],suppliers:[],products:[],sales:[],purchases:[],expenses:[],ledger:[],
 settings:{name:'الكامل سوفت',currency:'ر.ي',phone:'',address:''},
 cart:[],formOpen:false,q:'',unsubs:[],chart:null};
@@ -162,14 +160,120 @@ function render(){
   else dash();
 }
 
+/* ========== ترجمة أخطاء Firebase ========== */
+function authErr(e){
+  const c=e?.code||'';
+  const m={
+    'auth/invalid-email':'البريد الإلكتروني غير صحيح',
+    'auth/user-not-found':'لا يوجد حساب بهذا البريد',
+    'auth/wrong-password':'كلمة المرور غير صحيحة',
+    'auth/invalid-credential':'البريد أو كلمة المرور غير صحيحة',
+    'auth/email-already-in-use':'هذا البريد مستخدم مسبقاً',
+    'auth/weak-password':'كلمة المرور قصيرة جداً (6 أحرف على الأقل)',
+    'auth/too-many-requests':'محاولات كثيرة، حاول لاحقاً',
+    'auth/network-request-failed':'تعذّر الاتصال بالإنترنت',
+    'auth/popup-closed-by-user':'أُغلقت نافذة تسجيل الدخول',
+    'auth/popup-blocked':'المتصفح منع النافذة، اسمح بالنوافذ المنبثقة',
+    'auth/operation-not-allowed':'طريقة الدخول غير مفعّلة في Firebase',
+    'auth/missing-name':'اكتب اسمك الكامل'
+  };
+  return m[c]||('خطأ: '+c);
+}
+
 /* ========== تسجيل الدخول ========== */
 function loginView(){
   N.innerHTML='';
-  A.innerHTML=`<div class="card" style="text-align:center;margin-top:70px">
-  <div style="font-size:3rem">📒</div><h1 style="margin:8px 0">الكامل سوفت</h1>
-  <p><small>نظام محاسبي متكامل — عملاء، موردين، مخزون، مبيعات، مشتريات، مصروفات، تقارير ودفتر يومية</small></p><br>
-  <button class="btn w" id="g">الدخول بحساب جوجل</button></div>`;
-  $('#g').onclick=()=>signInWithPopup(auth,new GoogleAuthProvider()).catch(()=>toast('تعذّر الدخول، تأكد من نطاق Firebase'));
+  A.innerHTML=`
+  <div style="text-align:center;padding:40px 0 10px">
+    <div class="pub-logo" style="margin:0 auto 12px">📒</div>
+    <h1>الكامل سوفت</h1>
+    <p style="color:#6b7b72;font-size:.85rem;margin-top:6px">نظام محاسبي متكامل</p>
+  </div>
+
+  <div class="card">
+    <div class="row" style="margin-bottom:10px">
+      <button class="btn ${S._authTab==='login'?'':'g'} w" id="tab-login">دخول</button>
+      <button class="btn ${S._authTab==='register'?'':'g'} w" id="tab-register">حساب جديد</button>
+    </div>
+
+    ${S._authTab==='register'?`
+      <label>الاسم الكامل</label>
+      <input id="a-name" placeholder="مثال: أحمد محمد">
+    `:''}
+
+    <label>البريد الإلكتروني</label>
+    <input id="a-email" type="email" placeholder="you@email.com" autocomplete="email">
+
+    <label>كلمة المرور</label>
+    <input id="a-pass" type="password" placeholder="6 أحرف على الأقل" autocomplete="current-password">
+
+    <button class="btn w" id="a-go" style="margin-top:12px">
+      ${S._authTab==='register'?'إنشاء الحساب':'تسجيل الدخول'}
+    </button>
+
+    ${S._authTab==='login'?`
+      <div style="text-align:center;margin-top:10px">
+        <a id="a-forgot" style="color:#0f7a55;font-size:.82rem;cursor:pointer">نسيت كلمة المرور؟</a>
+      </div>
+    `:''}
+
+    <div style="display:flex;align-items:center;gap:10px;margin:16px 0">
+      <div style="flex:1;height:1px;background:#dde7e1"></div>
+      <small>أو</small>
+      <div style="flex:1;height:1px;background:#dde7e1"></div>
+    </div>
+
+    <button class="btn o w" id="g">
+      <img src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg" width="18" style="background:#fff;border-radius:3px;padding:2px">
+      المتابعة بحساب جوجل
+    </button>
+  </div>
+
+  <p style="text-align:center;font-size:.72rem;color:#888;margin-top:14px">
+    سيتم الاحتفاظ بتسجيل دخولك تلقائياً على هذا الجهاز
+  </p>`;
+
+  $('#tab-login').onclick=()=>{S._authTab='login';loginView()};
+  $('#tab-register').onclick=()=>{S._authTab='register';loginView()};
+
+  $('#a-go').onclick=async()=>{
+    const email=$('#a-email').value.trim();
+    const pass=$('#a-pass').value;
+    if(!email||!pass)return toast('أدخل البريد وكلمة المرور');
+    $('#a-go').disabled=true;
+    try{
+      await setPersistence(auth,browserLocalPersistence);
+      if(S._authTab==='register'){
+        const name=$('#a-name').value.trim();
+        if(!name)throw{code:'auth/missing-name'};
+        const cred=await createUserWithEmailAndPassword(auth,email,pass);
+        await setDoc(doc(db,'settings',cred.user.uid),{name,currency:'ر.ي',phone:'',address:''},{merge:true});
+        toast('تم إنشاء الحساب بنجاح');
+      }else{
+        await signInWithEmailAndPassword(auth,email,pass);
+        toast('مرحباً بك');
+      }
+    }catch(e){
+      $('#a-go').disabled=false;
+      toast(authErr(e));
+    }
+  };
+
+  $('#a-pass').addEventListener('keydown',e=>{if(e.key==='Enter')$('#a-go').click()});
+
+  $('#a-forgot').onclick=async()=>{
+    const email=$('#a-email').value.trim();
+    if(!email)return toast('اكتب بريدك أولاً');
+    try{await sendPasswordResetEmail(auth,email);toast('تم إرسال رابط الاستعادة إلى بريدك')}
+    catch(e){toast(authErr(e))}
+  };
+
+  $('#g').onclick=async()=>{
+    try{
+      await setPersistence(auth,browserLocalPersistence);
+      await signInWithPopup(auth,new GoogleAuthProvider());
+    }catch(e){toast(authErr(e))}
+  };
 }
 
 /* ========== لوحة التحكم ========== */
@@ -198,7 +302,11 @@ function dash(){
   </div></div>
   <div class="card"><div class="row"><b>آخر الحركات</b><button class="btn g sm" id="lg2">الكل</button></div>
    <div>${S.ledger.slice(0,7).map(txRow).join('')||'<p class="hint" style="padding:10px 0">لا توجد حركات</p>'}</div></div>`;
-  $('#out').onclick=()=>signOut(auth);
+  $('#out').onclick=async()=>{
+    if(!confirm('هل تريد تسجيل الخروج؟'))return;
+    try{await signOut(auth);toast('تم تسجيل الخروج')}
+    catch(e){toast('تعذّر تسجيل الخروج')}
+  };
   $('#st').onclick=()=>go('settings');
   $('#lg').onclick=$('#lg2').onclick=()=>go('ledger');
   A.querySelectorAll('[data-go]').forEach(e=>e.onclick=()=>go(e.dataset.go));
@@ -649,7 +757,7 @@ function settingsView(){
   </div>`;
   $('#sv').onclick=async()=>{
     S.settings={...S.settings,name:$('#nm').value.trim()||'الكامل سوفت',currency:$('#cu').value.trim()||'ر.ي',phone:$('#ph').value.trim(),address:$('#ad').value.trim()};
-    await setDoc(doc(db,'settings',S.user.uid),S.settings);
+    await setDoc(doc(db,'settings',S.user.uid),S.settings,{merge:true});
     toast('تم الحفظ');render();
   };
   $('#bk').onclick=()=>{
@@ -657,7 +765,11 @@ function settingsView(){
     const blob=new Blob([JSON.stringify(data,null,2)],{type:'application/json'});
     const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download='backup-'+Date.now()+'.json';a.click();
   };
-  $('#out').onclick=()=>signOut(auth);
+  $('#out').onclick=async()=>{
+    if(!confirm('هل تريد تسجيل الخروج؟'))return;
+    try{await signOut(auth);toast('تم تسجيل الخروج')}
+    catch(e){toast('تعذّر تسجيل الخروج')}
+  };
 }
 
 /* ========== PDF ========== */
@@ -680,7 +792,7 @@ function statementPDF(ent,txs,kind){
   <h3 style="margin-top:14px;color:${(ent.balance||0)>0?'#d6383d':'#0f7a55'}">الرصيد الحالي: ${fmt(ent.balance||0)}</h3>`);
 }
 
-/* ========== واجهة العميل العامة (محدثة) ========== */
+/* ========== واجهة العميل العامة ========== */
 function publicView(tk){
   N.innerHTML='';
   A.innerHTML=`
@@ -706,7 +818,6 @@ function publicView(tk){
     <p style="text-align:center;margin-top:15px;font-size:.7rem;color:#888">تم الإنشاء بواسطة ${esc(S.settings.name)}</p>
   `;
 
-  // تحميل بيانات العميل
   onSnapshot(doc(db,'accounts',tk),s=>{
     if(!s.exists()){ $('#acc').innerHTML='<p class="hint">الرابط غير صحيح. اطلب رابطاً جديداً من المتجر.</p>'; return; }
     const a=s.data();
@@ -719,7 +830,6 @@ function publicView(tk){
     `;
   });
 
-  // دالة موحدة لمعالجة الحركات من المصدرين القديم والجديد
   const processTx = (arr) => arr.map(d => {
     const x = d.data ? d.data() : d;
     return {
@@ -758,17 +868,15 @@ function publicView(tk){
     `).join('') : '<p class="hint" style="text-align:center;padding:20px 0">لا توجد حركات مسجلة بعد</p>';
   };
 
-  // المصدر الجديد (دفتر اليومية)
   onSnapshot(query(collection(db,'ledger'), where('accountId','==',tk)), s => {
     allTxs.ledger = processTx(s.docs);
     renderTxs();
   });
 
-  // المصدر القديم (الحركات السابقة) لضمان ظهور البيانات القديمة
   onSnapshot(query(collection(db,'accounts',tk,'tx'), orderBy('ts','desc')), s => {
     allTxs.old = processTx(s.docs);
     renderTxs();
-  }, (e) => console.log('لا توجد حركات قديمة أو غير مسموح بقراءتها'));
+  }, (e) => console.log('لا توجد حركات قديمة'));
 }
 
 /* ========== التهيئة ========== */
