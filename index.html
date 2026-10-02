@@ -412,6 +412,22 @@ function amountForm(type,ent,kind){
       await bt.commit();
       closeModal();
       toast('✅ تم التسجيل بنجاح');
+
+      // إرسال إشعار الويب (Push Notification) بالتنسيق المطلوب
+      const noteValue = $('#nt').value.trim();
+      const statusText = isDebt ? 'دين' : 'دفعة';
+      let pushMsg = `تم تسجيل ${statusText} ${amount}`;
+      
+      if (noteValue) {
+        pushMsg += `\nملاحظات: ${noteValue}`;
+      }
+      
+      pushMsg += `\nإجمالي حسابك: ${newBalance}`;
+      
+      if (isCust && window.notifyCustomer) {
+        window.notifyCustomer(ent.id, pushMsg);
+      }
+
       // إشعار واتساب
       if(isCust&&ent.phone){
         setTimeout(()=>notifyDebt(ent.name,ent.phone,amount,newBalance,isDebt?'debt':'payment'),400);
