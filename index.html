@@ -418,6 +418,10 @@ function amountForm(type,ent,kind){
       const noteValue = $('#nt').value.trim();
       const currency = S.settings.currency || 'ر.ي';
       
+      const now = new Date();
+      const dateStr = now.toLocaleDateString('ar-EG');
+      const timeStr = now.toLocaleTimeString('ar-EG', { hour: '2-digit', minute: '2-digit' });
+
       let pushMsg = `مرحباً ${ent.name} 👋\n`;
       
       if (isDebt) {
@@ -430,7 +434,8 @@ function amountForm(type,ent,kind){
         pushMsg += `📝 ملاحظات: ${noteValue}\n`;
       }
       
-      pushMsg += `📊 إجمالي حسابك الحالي: ${newBalance} ${currency}\n\n`;
+      pushMsg += `📊 إجمالي حسابك الحالي: ${newBalance} ${currency}\n`;
+      pushMsg += `📅 التاريخ: ${dateStr} - ${timeStr}\n\n`;
       pushMsg += isDebt ? 'شكراً لثقتكم بنا 🌹' : 'شكراً لالتزامكم بالسداد 💚';
       
       if (isCust && window.notifyCustomer) {
