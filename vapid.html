@@ -15,64 +15,33 @@
 <body>
 <div class="card">
   <h2>🔑 مولد مفاتيح VAPID</h2>
-  <p style="font-size: 14px; color: #6b7b72;">اضغط على الزر لتوليد المفاتيح، ثم انسخها وضعها في Vercel وملف push.js</p>
-  
+  <p style="font-size: 14px; color: #6b7b72;">اضغط على الزر لتوليد المفاتيح، ثم انسخها وضعها في Vercel</p>
   <button onclick="generateKeys()">⚙️ توليد المفاتيح</button>
-  
   <div id="result" style="display:none; margin-top: 20px;">
     <label>المفتاح العام (Public Key):</label>
     <textarea id="pubKey" readonly></textarea>
-    
     <label>المفتاح الخاص (Private Key):</label>
     <textarea id="privKey" readonly></textarea>
-    
-    <p style="font-size: 12px; color: #d6383d; margin-top: 10px;">⚠️ احتفظ بالمفتاح الخاص في مكان آمن ولا تشاركه مع أحد.</p>
   </div>
 </div>
-
 <script>
-function urlBase64ToUint8Array(base64String) {
-  const padding = '='.repeat((4 - base64String.length % 4) % 4);
-  const base64 = (base64String + padding).replace(/\-/g, '+').replace(/_/g, '/');
-  const rawData = window.atob(base64);
-  const outputArray = new Uint8Array(rawData.length);
-  for (let i = 0; i < rawData.length; ++i) {
-    outputArray[i] = rawData.charCodeAt(i);
-  }
-  return outputArray;
-}
-
 function arrayBufferToBase64Url(buffer) {
   let binary = '';
   const bytes = new Uint8Array(buffer);
-  for (let i = 0; i < bytes.byteLength; i++) {
-    binary += String.fromCharCode(bytes[i]);
-  }
+  for (let i = 0; i < bytes.byteLength; i++) { binary += String.fromCharCode(bytes[i]); }
   return window.btoa(binary).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
 }
-
 async function generateKeys() {
   try {
-    const keyPair = await window.crypto.subtle.generateKey(
-      { name: 'ECDSA', namedCurve: 'P-256' },
-      true,
-      ['sign', 'verify']
-    );
-
-    // تصدير المفتاح العام
+    const keyPair = await window.crypto.subtle.generateKey({ name: 'ECDSA', namedCurve: 'P-256' }, true, ['sign', 'verify']);
     const exportedPubKey = await window.crypto.subtle.exportKey('raw', keyPair.publicKey);
     const publicKey = arrayBufferToBase64Url(exportedPubKey);
-
-    // تصدير المفتاح الخاص (JWK ثم تحويله إلى Base64Url)
     const exportedPrivKey = await window.crypto.subtle.exportKey('jwk', keyPair.privateKey);
     const privateKey = exportedPrivKey.d;
-
     document.getElementById('pubKey').value = publicKey;
     document.getElementById('privKey').value = privateKey;
     document.getElementById('result').style.display = 'block';
-  } catch (error) {
-    alert('حدث خطأ أثناء التوليد: ' + error.message);
-  }
+  } catch (error) { alert('حدث خطأ: ' + error.message); }
 }
 </script>
 </body>
