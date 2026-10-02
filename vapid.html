@@ -1,0 +1,15 @@
+<!DOCTYPE html><html lang="ar" dir="rtl"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>مفاتيح الإشعارات</title></head>
+<body style="font-family:Tahoma;padding:16px;max-width:520px;margin:auto">
+<h3>توليد مفاتيح الإشعارات</h3>
+<button id="g" style="padding:12px 18px;font-size:1rem">توليد المفاتيح</button>
+<p>VAPID_PUBLIC_KEY</p><textarea id="pu" rows="3" style="width:100%" readonly></textarea>
+<p>VAPID_PRIVATE_KEY (سري، لا ترسله لأحد)</p><textarea id="pr" rows="2" style="width:100%" readonly></textarea>
+<script>
+const e=b=>btoa(String.fromCharCode(...new Uint8Array(b))).replace(/\+/g,'-').replace(/\//g,'_').replace(/=+$/,'');
+const d=s=>Uint8Array.from(atob(s.replace(/-/g,'+').replace(/_/g,'/')),c=>c.charCodeAt(0));
+g.onclick=async()=>{
+  const k=await crypto.subtle.generateKey({name:'ECDSA',namedCurve:'P-256'},true,['sign']);
+  const j=await crypto.subtle.exportKey('jwk',k.privateKey);
+  pu.value=e(new Uint8Array([4,...d(j.x),...d(j.y)]));pr.value=j.d;
+};
+</script></body></html>
