@@ -1,12 +1,46 @@
-self.addEventListener('push',e=>{
-  let d={};try{d=e.data.json()}catch(_){}
-  e.waitUntil(self.registration.showNotification(d.title||'ديوني',{body:d.body||'',icon:'icon-192.png',badge:'icon-192.png',dir:'rtl',lang:'ar',data:{url:d.url||'/'}}));
+// استقبال الإشعارات وعرضها
+self.addEventListener('push', function(event) {
+  if (event.data) {
+    let data;
+    try {
+      data = event.data.json();
+    } catch (e) {
+      data = { title: 'إشعار جديد', body: event.data.text() };
+    }
+
+    const options = {
+      body: data.body,
+      icon: '/icon-192.png',
+      badge: '/icon-192.png',
+      vibrate: [100, 50, 100], // اهتزاز الهاتف
+      data: {
+        url: data.url || '/'
+      }
+    };
+
+    event.waitUntil(
+      self.registration.showNotification(data.title || 'إشعار جديد', options)
+    );
+  }
 });
-self.addEventListener('notificationclick',e=>{
-  e.notification.close();
-  const u=e.notification.data.url;
-  e.waitUntil(clients.matchAll({type:'window',includeUncontrolled:true}).then(l=>{
-    for(const c of l)if(c.url===u&&'focus' in c)return c.focus();
-    return clients.openWindow(u);
-  }));
+
+// عند الضغط على الإشعار، افتح التطبيق
+self.addEventListener('notificationclick', function(event) {
+  event.notification.close(); // إغلاق الإشعار
+  
+  event.waitUntil(
+    clients.matchAll({ type: 'window' }).then(windowClients => {
+      // إذا كان التطبيق مفتوحاً، قم بالتركيز عليه
+      for (let i = 0; i < windowClients.length; i++) {
+        const client = windowClients[i];
+        if (client.url === event.notification.data.url && 'focus' in client) {
+          return client.focus();
+        }
+      }
+      // إذا لم يكن مفتوحاً، افتحه
+      if (clients.openWindow) {
+        return clients.openWindow(event.notification.data.url);
+      }
+    })
+  );
 });
