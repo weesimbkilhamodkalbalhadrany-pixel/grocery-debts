@@ -4,6 +4,7 @@
 <meta charset="UTF-8">
 <script type="module" src="push.js"></script>
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1">
+<link rel="manifest" href="/manifest.json">
 <title>الكامل سوفت — نظام محاسبي متكامل</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
@@ -413,16 +414,24 @@ function amountForm(type,ent,kind){
       closeModal();
       toast('✅ تم التسجيل بنجاح');
 
-      // إرسال إشعار الويب (Push Notification) بالتنسيق المطلوب
+      // إرسال إشعار ويب جذاب ومحترف
       const noteValue = $('#nt').value.trim();
-      const statusText = isDebt ? 'دين' : 'دفعة';
-      let pushMsg = `تم تسجيل ${statusText} ${amount}`;
+      const currency = S.settings.currency || 'ر.ي';
       
-      if (noteValue) {
-        pushMsg += `\nملاحظات: ${noteValue}`;
+      let pushMsg = `مرحباً ${ent.name} 👋\n`;
+      
+      if (isDebt) {
+        pushMsg += `🔴 تم تسجيل دين جديد بقيمة: ${amount} ${currency}\n`;
+      } else {
+        pushMsg += `🟢 تم تسجيل دفعة بقيمة: ${amount} ${currency}\n`;
       }
       
-      pushMsg += `\nإجمالي حسابك: ${newBalance}`;
+      if (noteValue) {
+        pushMsg += `📝 ملاحظات: ${noteValue}\n`;
+      }
+      
+      pushMsg += `📊 إجمالي حسابك الحالي: ${newBalance} ${currency}\n\n`;
+      pushMsg += isDebt ? 'شكراً لثقتكم بنا 🌹' : 'شكراً لالتزامكم بالسداد 💚';
       
       if (isCust && window.notifyCustomer) {
         window.notifyCustomer(ent.id, pushMsg);
