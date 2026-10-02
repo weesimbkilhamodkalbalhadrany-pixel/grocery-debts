@@ -83,10 +83,60 @@ input:checked+.slider:before{transform:translateX(20px)}
 .pub-tx-amount.ok{color:#0f7a55}
 .pub-tx-amount.due{color:#d6383d}
 
-@media print{#nav,.btn,.pub-header .pub-logo{display:none!important}body{background:#fff;padding:0}.pub-card{border:1px solid #ccc;box-shadow:none;break-inside:avoid}}
+/* شريط الإشعارات */
+.notif-bar{position:fixed;top:0;left:0;right:0;max-width:520px;margin:auto;
+background:linear-gradient(135deg,#0f7a55,#0ea06c);color:#fff;padding:11px 14px;
+display:none;align-items:center;justify-content:space-between;gap:10px;
+z-index:95;box-shadow:0 4px 14px rgba(15,122,85,.35);animation:slideDown .4s ease}
+@keyframes slideDown{from{transform:translateY(-100%);opacity:0}to{transform:translateY(0);opacity:1}}
+.notif-bar b{display:block;font-size:.9rem}
+.notif-bar small{display:block;font-size:.72rem;opacity:.95;margin-top:2px}
+.notif-bar button{background:#fff;color:#0f7a55;border:0;border-radius:9px;
+padding:9px 15px;font-weight:800;font-size:.82rem;cursor:pointer;flex-shrink:0;
+box-shadow:0 2px 6px rgba(0,0,0,.15);font-family:inherit}
+.notif-bar .close-n{background:transparent;color:#fff;border:1px solid rgba(255,255,255,.5);
+padding:6px 10px;font-size:.75rem}
+body.has-notif-bar{padding-top:66px}
+/* نافذة إجبارية */
+.notif-forced{position:fixed;inset:0;background:rgba(10,25,18,.75);z-index:250;
+display:none;align-items:center;justify-content:center;padding:20px}
+.notif-forced.open{display:flex}
+.notif-forced .box{background:#fff;border-radius:20px;padding:22px;max-width:400px;
+width:100%;text-align:center;box-shadow:0 10px 40px rgba(0,0,0,.3)}
+.notif-forced .icon{font-size:3rem;margin-bottom:8px}
+.notif-forced h3{font-size:1.1rem;margin-bottom:8px;color:#16241d}
+.notif-forced p{font-size:.85rem;color:#6b7b72;line-height:1.6;margin-bottom:14px}
+.notif-forced .btn{margin-top:6px}
+@media (display-mode:standalone){.notif-bar{top:env(safe-area-inset-top)}}
+
+@media print{#nav,.btn,.pub-header .pub-logo,.notif-bar,.notif-forced{display:none!important}body{background:#fff;padding:0}.pub-card{border:1px solid #ccc;box-shadow:none;break-inside:avoid}}
 </style>
 </head>
 <body>
+
+<!-- شريط الإشعارات -->
+<div id="notifBar" class="notif-bar">
+  <div>
+    <b>🔔 فعّل الإشعارات</b>
+    <small>لتصلك الفواتير والدفعات لحظياً</small>
+  </div>
+  <div style="display:flex;gap:6px">
+    <button class="close-n" id="notifLater">لاحقاً</button>
+    <button id="notifEnable">تفعيل</button>
+  </div>
+</div>
+
+<!-- نافذة الإشعارات الإجبارية -->
+<div id="notifForced" class="notif-forced">
+  <div class="box">
+    <div class="icon">🔔</div>
+    <h3>يجب تفعيل الإشعارات</h3>
+    <p id="notifForcedMsg">لتصلك الفواتير والدفعات فوراً على هاتفك، يرجى تفعيل الإشعارات.</p>
+    <button class="btn w" id="notifForceEnable">✅ تفعيل الآن</button>
+    <button class="btn o w" id="notifForceSkip" style="margin-top:8px">تخطي (غير مُفضّل)</button>
+  </div>
+</div>
+
 <div id="app"></div>
 <nav id="nav"></nav>
 <div id="toast"></div>
@@ -149,7 +199,6 @@ function notifyDebt(name,phone,amount,balance,kind){
   const msg=isDebt
     ? `تم تسجيل دين بمبلغ *${n2(amount)} ${S.settings.currency}*\nالرصيد الحالي: *${n2(balance)} ${S.settings.currency}*\n\nشكراً لتعاملك معنا 🌹`
     : `تم تسجيل دفعة بمبلغ *${n2(amount)} ${S.settings.currency}*\nالرصيد المتبقي: *${n2(balance)} ${S.settings.currency}*\n\nشكراً لك 💚`;
-  // إظهار نافذة تأكيد
   modal(`<h2>إشعار واتساب</h2>
   <p style="margin:10px 0;font-size:.9rem;color:#6b7b72">هل تريد إرسال إشعار واتساب إلى <b>${esc(name)}</b>؟</p>
   <div class="card" style="background:#f8faf9;font-size:.85rem;white-space:pre-wrap;padding:12px">${esc(msg)}</div>
@@ -182,6 +231,7 @@ function nav(){
 function render(){
   if(!S.user){loginView();return}
   nav();
+  updateNotifBar();
   const v=S.view;
   if(v==='dashboard')dash();
   else if(v==='customers')customersList();
@@ -414,36 +464,27 @@ function amountForm(type,ent,kind){
       closeModal();
       toast('✅ تم التسجيل بنجاح');
 
-      // إرسال إشعار ويب جذاب ومحترف
       const noteValue = $('#nt').value.trim();
       const currency = S.settings.currency || 'ر.ي';
-      
       const now = new Date();
       const dateStr = now.toLocaleDateString('ar-EG');
       const timeStr = now.toLocaleTimeString('ar-EG', { hour: '2-digit', minute: '2-digit' });
 
       let pushMsg = `مرحباً ${ent.name} 👋\n`;
-      
       if (isDebt) {
         pushMsg += `🔴 تم تسجيل دين جديد بقيمة: ${amount} ${currency}\n`;
       } else {
         pushMsg += `🟢 تم تسجيل دفعة بقيمة: ${amount} ${currency}\n`;
       }
-      
-      if (noteValue) {
-        pushMsg += `📝 ملاحظات: ${noteValue}\n`;
-      }
-      
+      if (noteValue) pushMsg += `📝 ملاحظات: ${noteValue}\n`;
       pushMsg += `📊 إجمالي حسابك الحالي: ${newBalance} ${currency}\n`;
       pushMsg += `📅 التاريخ: ${dateStr} - ${timeStr}\n\n`;
       pushMsg += isDebt ? 'شكراً لثقتكم بنا 🌹' : 'شكراً لالتزامكم بالسداد 💚';
-      
-      // إرسال الإشعار مع اسم المتجر كعنوان (ديناميكي)
+
       if (isCust && window.notifyCustomer) {
         window.notifyCustomer(ent.id, pushMsg, S.settings.name);
       }
 
-      // إشعار واتساب
       if(isCust&&ent.phone){
         setTimeout(()=>notifyDebt(ent.name,ent.phone,amount,newBalance,isDebt?'debt':'payment'),400);
       }
@@ -633,7 +674,6 @@ async function saveSale(){
   S.formOpen=false;S.cart=[];
   toast('✅ تم حفظ الفاتورة');
   go('sales');
-  // عرض خيار طباعة الفاتورة
   setTimeout(()=>{
     modal(`<h2>تم حفظ الفاتورة ✅</h2>
     <p style="margin:10px 0;font-size:.9rem">هل تريد طباعة الفاتورة؟</p>
@@ -795,7 +835,6 @@ function employeeForm(emp){
       const op=Number($('#op').value)||0;
       await setDoc(doc(collection(db,'employees')),{owner:S.user.uid,...data,balance:op,createdAt:Date.now()});
       if(op>0){
-        // سجل السحبيات السابقة في اليومية
         await setDoc(newLedgerRef(),ledgerData('advance','سحبيات سابقة',op,'out',-op,{employeeId:''}));
       }
     }
@@ -974,6 +1013,15 @@ function settingsView(){
     <button class="btn w" id="sv" style="margin-top:10px">حفظ الإعدادات</button>
   </div>
   <div class="card">
+    <div class="row">
+      <div>
+        <b>🔔 إشعارات المتصفح</b><br>
+        <small id="st-notif">${notifGranted()?'✅ مُفعّلة':'❌ غير مُفعّلة'}</small>
+      </div>
+      <button class="btn sm" id="st-notif-btn">${notifGranted()?'إعادة طلب':'تفعيل'}</button>
+    </div>
+  </div>
+  <div class="card">
     <button class="btn g w" id="bk">💾 نسخة احتياطية (JSON)</button>
     <button class="btn o r w" id="out" style="margin-top:8px">تسجيل الخروج</button>
   </div>`;
@@ -982,6 +1030,12 @@ function settingsView(){
       phone:$('#ph').value.trim(),address:$('#ad').value.trim(),autoWhatsApp:$('#wa').checked};
     await setDoc(doc(db,'settings',S.user.uid),S.settings,{merge:true});
     toast('تم الحفظ');render();
+  };
+  $('#st-notif-btn').onclick=async ()=>{
+    if(notifGranted()){ toast('الإشعارات مُفعّلة بالفعل'); return; }
+    await requestNotification();
+    const el = $('#st-notif');
+    if(el) el.textContent = notifGranted()?'✅ مُفعّلة':'❌ غير مُفعّلة';
   };
   $('#bk').onclick=()=>{
     const data={settings:S.settings,customers:S.customers,suppliers:S.suppliers,products:S.products,sales:S.sales,purchases:S.purchases,expenses:S.expenses,ledger:S.ledger,employees:S.employees};
@@ -1073,6 +1127,7 @@ function invoicePDF(rec,kind){
 /* ===== واجهة العميل العامة ===== */
 function publicView(tk){
   N.innerHTML='';
+  updateNotifBar();
   A.innerHTML=`
     <div class="pub-header">
       <div class="pub-logo">📒</div>
@@ -1127,6 +1182,154 @@ function publicView(tk){
   onSnapshot(query(collection(db,'ledger'),where('accountId','==',tk)),s=>{allTxs.ledger=processTx(s.docs);renderTxs()});
   onSnapshot(query(collection(db,'accounts',tk,'tx'),orderBy('ts','desc')),s=>{allTxs.old=processTx(s.docs);renderTxs()},e=>console.log('no old tx'));
 }
+
+/* ===== نظام الإشعارات العالمي ===== */
+const NOTIF_SUPPORTED = ('Notification' in window) && ('serviceWorker' in navigator);
+const IS_IOS = /iPad|iPhone|iPod/.test(navigator.userAgent);
+const IS_STANDALONE = window.matchMedia('(display-mode: standalone)').matches 
+                    || window.navigator.standalone === true;
+let _notifSkipped = sessionStorage.getItem('notif_skipped') === '1';
+
+function notifGranted(){
+  return NOTIF_SUPPORTED && Notification.permission === 'granted';
+}
+
+function updateNotifBar(){
+  if(!NOTIF_SUPPORTED) return;
+  const bar = document.getElementById('notifBar');
+  if(!bar) return;
+  if(notifGranted() || _notifSkipped){
+    bar.style.display = 'none';
+    document.body.classList.remove('has-notif-bar');
+  } else {
+    bar.style.display = 'flex';
+    document.body.classList.add('has-notif-bar');
+  }
+}
+
+function iosInstructions(){
+  return 'لتشغيل الإشعارات على iPhone:\n\n' +
+    '1) اضغط زر المشاركة 📤 في Safari\n' +
+    '2) اختر "إضافة إلى الشاشة الرئيسية"\n' +
+    '3) افتح التطبيق من الأيقونة الجديدة\n' +
+    '4) اضغط "تفعيل" مرة أخرى';
+}
+
+async function requestNotification(){
+  if(!NOTIF_SUPPORTED){
+    alert('متصفحك لا يدعم الإشعارات.\nاستخدم Chrome أو Safari حديث.');
+    return false;
+  }
+  if(IS_IOS && !IS_STANDALONE){
+    alert(iosInstructions());
+    return false;
+  }
+  try{
+    const perm = await Notification.requestPermission();
+    if(perm !== 'granted'){
+      toast('❌ تم رفض الإشعارات');
+      return false;
+    }
+    // تسجيل Service Worker
+    let reg = null;
+    try{
+      reg = await navigator.serviceWorker.register('/firebase-messaging-sw.js', { scope:'/' });
+    }catch(e){ console.warn('SW register failed:', e); }
+    
+    // الحصول على FCM token — يدعم push.js بأشكال مختلفة
+    try{
+      if(typeof window.initPush === 'function'){
+        await window.initPush();
+      } else if(typeof window.getFcmToken === 'function'){
+        await window.getFcmToken();
+      } else if(reg && reg.active){
+        window.dispatchEvent(new Event('notification-granted'));
+      }
+    }catch(e){ console.warn('FCM token error:', e); }
+    
+    // إشعار ترحيبي محلي كدليل
+    try{
+      if(reg && reg.showNotification){
+        await reg.showNotification('✅ تم تفعيل الإشعارات', {
+          body: 'ستصلك الفواتير والدفعات فوراً على هذا الجهاز',
+          icon: '/icon-192.png',
+          badge: '/icon-192.png',
+          dir: 'rtl', lang: 'ar'
+        });
+      }
+    }catch(e){}
+    
+    toast('✅ تم تفعيل الإشعارات بنجاح');
+    updateNotifBar();
+    const forcedEl = document.getElementById('notifForced');
+    if(forcedEl) forcedEl.classList.remove('open');
+    return true;
+  }catch(e){
+    console.error(e);
+    toast('تعذّر تفعيل الإشعارات');
+    return false;
+  }
+}
+
+function showForcedNotifModal(){
+  if(!NOTIF_SUPPORTED) return;
+  if(notifGranted()) return;
+  if(_notifSkipped) return;
+  const box = document.getElementById('notifForced');
+  if(!box) return;
+  const msg = document.getElementById('notifForcedMsg');
+  if(IS_IOS && !IS_STANDALONE){
+    msg.innerHTML = '📱 على iPhone، يجب أولاً إضافة التطبيق للشاشة الرئيسية:<br><br>' +
+      '<b>1)</b> اضغط زر المشاركة 📤<br><b>2)</b> "إضافة إلى الشاشة الرئيسية"<br>' +
+      '<b>3)</b> افتح التطبيق من الأيقونة<br><b>4)</b> عد واضغط "تفعيل الآن"';
+  }
+  box.classList.add('open');
+}
+
+// ربط الأحداث
+document.addEventListener('click', e=>{
+  if(e.target && e.target.id === 'notifEnable'){ requestNotification(); }
+  if(e.target && e.target.id === 'notifForceEnable'){ requestNotification(); }
+  if(e.target && e.target.id === 'notifLater'){
+    _notifSkipped = true;
+    sessionStorage.setItem('notif_skipped','1');
+    const bar = document.getElementById('notifBar');
+    if(bar){ bar.style.display='none'; document.body.classList.remove('has-notif-bar'); }
+  }
+  if(e.target && e.target.id === 'notifForceSkip'){
+    _notifSkipped = true;
+    sessionStorage.setItem('notif_skipped','1');
+    const forcedEl = document.getElementById('notifForced');
+    if(forcedEl) forcedEl.classList.remove('open');
+  }
+});
+
+// مراقبة تغيّر الصلاحية
+if(NOTIF_SUPPORTED && navigator.permissions){
+  navigator.permissions.query({name:'notifications'}).then(p=>{
+    p.onchange = ()=>{ 
+      updateNotifBar(); 
+      if(notifGranted()){
+        const forcedEl = document.getElementById('notifForced');
+        if(forcedEl) forcedEl.classList.remove('open');
+      }
+    };
+  }).catch(()=>{});
+}
+
+// إظهار شريط الإشعارات فور تحميل الصفحة
+window.addEventListener('load', ()=>{
+  updateNotifBar();
+  setTimeout(showForcedNotifModal, 1500);
+});
+
+// فحص دوري (كل 5 ثوان)
+setInterval(()=>{
+  const bar = document.getElementById('notifBar');
+  if(bar && !notifGranted() && !_notifSkipped && bar.style.display === 'none'){
+    updateNotifBar();
+  }
+}, 5000);
 
 /* ===== التهيئة ===== */
 async function loadSettings(){
