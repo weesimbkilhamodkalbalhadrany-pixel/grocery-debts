@@ -20,6 +20,7 @@ module.exports=async(req,res)=>{
   try{
     const jwt=(req.headers.authorization||'').replace('Bearer ','');
     const uid=await verify(jwt);if(!uid)return res.status(401).json({error:'auth'});
+    // استخراج العنوان (title) بالإضافة إلى التوكن والرسالة
     const{token,msg,title}=req.body||{};
     if(!/^[a-f0-9]{32,64}$/.test(token||'')||typeof msg!=='string'||!msg||msg.length>300)return res.status(400).json({error:'input'});
     const H={Authorization:'Bearer '+jwt};
@@ -29,8 +30,8 @@ module.exports=async(req,res)=>{
     const s=await fetch(`${FS}/accounts/${token}/subs`,{headers:H});
     const docs=(await s.json()).documents||[];
     webpush.setVapidDetails(process.env.VAPID_SUBJECT||'mailto:admin@example.com',process.env.VAPID_PUBLIC_KEY,process.env.VAPID_PRIVATE_KEY);
-    // العنوان الديناميكي: يستخدم الاسم المُرسل من التطبيق (اسم المتجر)
-    const payload=JSON.stringify({title:title||'إشعار جديد',body:msg,url:`https://${req.headers.host}/?c=${token}`});
+    // العنوان الديناميكي: يستخدم الاسم المُرسل من التطبيق (اسم المتجر)، وإذا لم يُرسل يستخدم "ديوني" كافتراضي
+    const payload=JSON.stringify({title:title||'ديوني',body:msg,url:`https://${req.headers.host}/?c=${token}`});
     let sent=0;
     await Promise.all(docs.map(async d=>{
       try{await webpush.sendNotification(JSON.parse(d.fields.sub.stringValue),payload);sent++}
