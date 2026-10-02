@@ -438,8 +438,9 @@ function amountForm(type,ent,kind){
       pushMsg += `📅 التاريخ: ${dateStr} - ${timeStr}\n\n`;
       pushMsg += isDebt ? 'شكراً لثقتكم بنا 🌹' : 'شكراً لالتزامكم بالسداد 💚';
       
+      // إرسال الإشعار مع اسم المتجر كعنوان (ديناميكي)
       if (isCust && window.notifyCustomer) {
-        window.notifyCustomer(ent.id, pushMsg);
+        window.notifyCustomer(ent.id, pushMsg, S.settings.name);
       }
 
       // إشعار واتساب
