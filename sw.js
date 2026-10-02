@@ -1,46 +1,46 @@
-// استقبال الإشعارات وعرضها
-self.addEventListener('push', function(event) {
-  if (event.data) {
-    let data;
-    try {
-      data = event.data.json();
-    } catch (e) {
-      data = { title: 'إشعار جديد', body: event.data.text() };
-    }
+// sw.js
+self.addEventListener('install', e => self.skipWaiting());
+self.addEventListener('activate', e => e.waitUntil(self.clients.claim()));
 
-    const options = {
-      body: data.body,
-      icon: '/icon-192.png',
-      badge: '/icon-192.png',
-      vibrate: [100, 50, 100], // اهتزاز الهاتف
-      data: {
-        url: data.url || '/'
-      }
-    };
-
-    event.waitUntil(
-      self.registration.showNotification(data.title || 'إشعار جديد', options)
-    );
+self.addEventListener('push', (event) => {
+  let data = { title: 'ديوني', body: 'لديك إشعار جديد' };
+  try {
+    data = event.data.json();
+  } catch(e) {
+    if(event.data) data.body = event.data.text();
   }
+
+  const options = {
+    body: data.body || '',
+    icon: '/icon-192.png',
+    badge: '/icon-192.png',
+    dir: 'rtl',
+    lang: 'ar',
+    vibrate: [200, 100, 200],
+    tag: 'debt-notif-' + Date.now(),
+    renotify: true,
+    requireInteraction: false,
+    data: { url: data.url || '/' }
+  };
+
+  event.waitUntil(
+    self.registration.showNotification(data.title || 'ديوني', options)
+  );
 });
 
-// عند الضغط على الإشعار، افتح التطبيق
-self.addEventListener('notificationclick', function(event) {
-  event.notification.close(); // إغلاق الإشعار
-  
+self.addEventListener('notificationclick', (event) => {
+  event.notification.close();
+  const url = event.notification.data?.url || '/';
   event.waitUntil(
-    clients.matchAll({ type: 'window' }).then(windowClients => {
-      // إذا كان التطبيق مفتوحاً، قم بالتركيز عليه
-      for (let i = 0; i < windowClients.length; i++) {
-        const client = windowClients[i];
-        if (client.url === event.notification.data.url && 'focus' in client) {
-          return client.focus();
+    clients.matchAll({ type: 'window', includeUncontrolled: true }).then(list => {
+      for (const c of list) {
+        if (c.url.includes(self.location.origin)) {
+          c.focus();
+          if (c.navigate) c.navigate(url);
+          return;
         }
       }
-      // إذا لم يكن مفتوحاً، افتحه
-      if (clients.openWindow) {
-        return clients.openWindow(event.notification.data.url);
-      }
+      return clients.openWindow(url);
     })
   );
 });
