@@ -83,7 +83,31 @@ input:checked+.slider:before{transform:translateX(20px)}
 .pub-tx-amount.ok{color:#0f7a55}
 .pub-tx-amount.due{color:#d6383d}
 
-/* شريط الإشعارات */
+/* بطاقة تفعيل الإشعارات في واجهة العميل */
+.notif-activate-card{
+  background:linear-gradient(135deg,#0f7a55,#0ea06c);
+  color:#fff;text-align:center;padding:18px 16px;
+  box-shadow:0 6px 20px rgba(15,122,85,.3);
+  border:0;animation:pulseGlow 2.5s ease-in-out infinite;
+}
+@keyframes pulseGlow{0%,100%{box-shadow:0 6px 20px rgba(15,122,85,.3)}50%{box-shadow:0 8px 28px rgba(15,122,85,.5)}}
+.notif-activate-card .bell{font-size:2.4rem;display:block;margin-bottom:6px;animation:bellRing 2s ease-in-out infinite}
+@keyframes bellRing{0%,100%{transform:rotate(0)}10%,30%{transform:rotate(-12deg)}20%,40%{transform:rotate(12deg)}50%{transform:rotate(0)}}
+.notif-activate-card h3{font-size:1rem;margin-bottom:6px;font-weight:800}
+.notif-activate-card p{font-size:.78rem;opacity:.95;line-height:1.6;margin-bottom:12px}
+.notif-activate-card .activate-btn{
+  background:#fff;color:#0f7a55;border:0;border-radius:11px;
+  padding:12px 18px;font-weight:800;font-size:.92rem;
+  width:100%;cursor:pointer;font-family:inherit;
+  box-shadow:0 3px 10px rgba(0,0,0,.15);transition:transform .15s
+}
+.notif-activate-card .activate-btn:active{transform:scale(.97)}
+.notif-activate-card .activate-btn:disabled{opacity:.7;cursor:wait}
+.notif-activate-card .note{display:block;margin-top:8px;opacity:.85;font-size:.68rem}
+.notif-activate-card.denied{background:linear-gradient(135deg,#8a3a3a,#b04a4a)}
+.notif-activate-card.granted{background:linear-gradient(135deg,#0f7a55,#0ea06c)}
+
+/* شريط الإشعارات العلوي */
 .notif-bar{position:fixed;top:0;left:0;right:0;max-width:520px;margin:auto;
 background:linear-gradient(135deg,#0f7a55,#0ea06c);color:#fff;padding:11px 14px;
 display:none;align-items:center;justify-content:space-between;gap:10px;
@@ -97,6 +121,7 @@ box-shadow:0 2px 6px rgba(0,0,0,.15);font-family:inherit}
 .notif-bar .close-n{background:transparent;color:#fff;border:1px solid rgba(255,255,255,.5);
 padding:6px 10px;font-size:.75rem}
 body.has-notif-bar{padding-top:66px}
+
 /* نافذة إجبارية */
 .notif-forced{position:fixed;inset:0;background:rgba(10,25,18,.75);z-index:250;
 display:none;align-items:center;justify-content:center;padding:20px}
@@ -109,12 +134,12 @@ width:100%;text-align:center;box-shadow:0 10px 40px rgba(0,0,0,.3)}
 .notif-forced .btn{margin-top:6px}
 @media (display-mode:standalone){.notif-bar{top:env(safe-area-inset-top)}}
 
-@media print{#nav,.btn,.pub-header .pub-logo,.notif-bar,.notif-forced{display:none!important}body{background:#fff;padding:0}.pub-card{border:1px solid #ccc;box-shadow:none;break-inside:avoid}}
+@media print{#nav,.btn,.pub-header .pub-logo,.notif-bar,.notif-forced,.notif-activate-card{display:none!important}body{background:#fff;padding:0}.pub-card{border:1px solid #ccc;box-shadow:none;break-inside:avoid}}
 </style>
 </head>
 <body>
 
-<!-- شريط الإشعارات -->
+<!-- شريط الإشعارات العلوي (للتاجر) -->
 <div id="notifBar" class="notif-bar">
   <div>
     <b>🔔 فعّل الإشعارات</b>
@@ -130,10 +155,10 @@ width:100%;text-align:center;box-shadow:0 10px 40px rgba(0,0,0,.3)}
 <div id="notifForced" class="notif-forced">
   <div class="box">
     <div class="icon">🔔</div>
-    <h3>يجب تفعيل الإشعارات</h3>
+    <h3>تفعيل الإشعارات</h3>
     <p id="notifForcedMsg">لتصلك الفواتير والدفعات فوراً على هاتفك، يرجى تفعيل الإشعارات.</p>
     <button class="btn w" id="notifForceEnable">✅ تفعيل الآن</button>
-    <button class="btn o w" id="notifForceSkip" style="margin-top:8px">تخطي (غير مُفضّل)</button>
+    <button class="btn o w" id="notifForceSkip" style="margin-top:8px">لاحقاً</button>
   </div>
 </div>
 
@@ -147,7 +172,7 @@ import{initializeApp}from"https://www.gstatic.com/firebasejs/10.12.2/firebase-ap
 import{getAuth,GoogleAuthProvider,signInWithPopup,onAuthStateChanged,signOut,
 signInWithEmailAndPassword,createUserWithEmailAndPassword,sendPasswordResetEmail,
 setPersistence,browserLocalPersistence}from"https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
-import{getFirestore,doc,setDoc,getDoc,collection,query,where,orderBy,onSnapshot,writeBatch,increment,deleteDoc,updateDoc}from"https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+import{getFirestore,doc,setDoc,getDoc,collection,query,where,orderBy,onSnapshot,writeBatch,increment,deleteDoc,updateDoc,addDoc,serverTimestamp}from"https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
 
 const fb=initializeApp({apiKey:"AIzaSyDaLsIF93OD-Lr9y51j_s4wB9OzahLUiTQ",authDomain:"grocery-debts.firebaseapp.com",projectId:"grocery-debts",storageBucket:"grocery-debts.firebasestorage.app",messagingSenderId:"484535933298",appId:"1:484535933298:web:87f8e2ea08a6d26231e5eb"});
 const auth=getAuth(fb),db=getFirestore(fb);
@@ -482,7 +507,7 @@ function amountForm(type,ent,kind){
       pushMsg += isDebt ? 'شكراً لثقتكم بنا 🌹' : 'شكراً لالتزامكم بالسداد 💚';
 
       if (isCust && window.notifyCustomer) {
-        window.notifyCustomer(ent.id, pushMsg, S.settings.name);
+        try{ await window.notifyCustomer(ent.id, pushMsg, S.settings.name); }catch(e){ console.warn(e); }
       }
 
       if(isCust&&ent.phone){
@@ -1127,13 +1152,22 @@ function invoicePDF(rec,kind){
 /* ===== واجهة العميل العامة ===== */
 function publicView(tk){
   N.innerHTML='';
-  updateNotifBar();
   A.innerHTML=`
     <div class="pub-header">
       <div class="pub-logo">📒</div>
       <h1>كشف حساب</h1>
       <p id="pub-store">جاري التحميل...</p>
     </div>
+
+    <!-- 🔔 بطاقة تفعيل الإشعارات للعميل -->
+    <div class="pub-card notif-activate-card" id="notifCard">
+      <span class="bell">🔔</span>
+      <h3>فعّل الإشعارات</h3>
+      <p>لتصلك الفواتير والدفعات لحظة تسجيلها على حسابك</p>
+      <button class="activate-btn" id="pubNotifBtn">✅ تفعيل الإشعارات الآن</button>
+      <small class="note">يمكنك إيقافها في أي وقت من إعدادات المتصفح</small>
+    </div>
+
     <div class="pub-card pub-balance-card" id="acc"><div class="hint">جاري تحميل البيانات...</div></div>
     <div class="pub-card" id="pub-summary" style="display:none">
       <div class="grid2">
@@ -1148,6 +1182,14 @@ function publicView(tk){
     <button class="btn w" onclick="window.print()">🖨️ طباعة / حفظ PDF</button>
     <p style="text-align:center;margin-top:15px;font-size:.7rem;color:#888">تم الإنشاء بواسطة ${esc(S.settings.name)}</p>
   `;
+
+  // ربط زر الإشعارات
+  const btn = $('#pubNotifBtn');
+  if(btn){
+    btn.onclick = ()=>activateCustomerNotifications(tk);
+  }
+  refreshPubNotifCard();
+
   onSnapshot(doc(db,'accounts',tk),s=>{
     if(!s.exists()){$('#acc').innerHTML='<p class="hint">الرابط غير صحيح.</p>';return}
     const a=s.data();
@@ -1181,6 +1223,125 @@ function publicView(tk){
   };
   onSnapshot(query(collection(db,'ledger'),where('accountId','==',tk)),s=>{allTxs.ledger=processTx(s.docs);renderTxs()});
   onSnapshot(query(collection(db,'accounts',tk,'tx'),orderBy('ts','desc')),s=>{allTxs.old=processTx(s.docs);renderTxs()},e=>console.log('no old tx'));
+}
+
+/* ===== تفعيل إشعارات العميل ===== */
+function refreshPubNotifCard(){
+  const card = document.getElementById('notifCard');
+  if(!card) return;
+  if(!NOTIF_SUPPORTED){ card.style.display='none'; return; }
+  const perm = Notification.permission;
+  if(perm === 'granted'){
+    card.style.display = 'none';
+    return;
+  }
+  if(perm === 'denied'){
+    card.classList.add('denied');
+    card.innerHTML = `
+      <span class="bell">🔕</span>
+      <h3>الإشعارات محظورة</h3>
+      <p>يرجى تفعيل الإشعارات من إعدادات المتصفح لهذا الموقع، ثم إعادة تحميل الصفحة.</p>
+    `;
+    card.style.display = 'block';
+    return;
+  }
+  card.style.display = 'block';
+}
+
+async function activateCustomerNotifications(tk){
+  if(!NOTIF_SUPPORTED){
+    alert('متصفحك لا يدعم الإشعارات.\nاستخدم Chrome أو Safari حديث.');
+    return;
+  }
+  if(IS_IOS && !IS_STANDALONE){
+    alert(iosInstructions());
+    return;
+  }
+
+  const btn = document.getElementById('pubNotifBtn');
+  if(btn){ btn.disabled = true; btn.textContent = '⏳ جارٍ التفعيل...'; }
+
+  try{
+    const perm = await Notification.requestPermission();
+    if(perm !== 'granted'){
+      toast('❌ تم رفض الإشعارات');
+      if(btn){ btn.disabled = false; btn.textContent = '✅ تفعيل الإشعارات الآن'; }
+      refreshPubNotifCard();
+      return;
+    }
+
+    // 1) تسجيل Service Worker
+    let reg = null;
+    try{
+      reg = await navigator.serviceWorker.register('/firebase-messaging-sw.js', {scope:'/'});
+      await navigator.serviceWorker.ready;
+    }catch(e){ console.warn('SW register failed:', e); }
+
+    // 2) محاولة الحصول على FCM Token من push.js بعدة طرق
+    let fcmToken = null;
+    try{
+      if(typeof window.getFcmToken === 'function'){
+        fcmToken = await window.getFcmToken();
+      } else if(typeof window.initPush === 'function'){
+        const r = await window.initPush();
+        fcmToken = (typeof r === 'string' ? r : null) || window.__fcmToken || null;
+      } else if(typeof window.requestFcmToken === 'function'){
+        fcmToken = await window.requestFcmToken();
+      }
+    }catch(e){ console.warn('FCM token fetch failed:', e); }
+
+    // 3) حفظ Token في حساب العميل (subcollection tokens)
+    const tokenId = fcmToken || ('local_' + (crypto.randomUUID ? crypto.randomUUID() : Date.now()));
+    try{
+      await setDoc(doc(db,'accounts',tk,'tokens',tokenId), {
+        token: fcmToken || null,
+        accountId: tk,
+        createdAt: Date.now(),
+        userAgent: navigator.userAgent,
+        platform: IS_IOS ? 'ios' : 'other',
+        permission: perm
+      }, {merge:true});
+      
+      // أيضاً حفظ في مجموعة عامة كنسخة احتياطية
+      await setDoc(doc(db,'pushTokens',tokenId), {
+        token: fcmToken || null,
+        accountId: tk,
+        createdAt: Date.now(),
+        platform: IS_IOS ? 'ios' : 'other'
+      }, {merge:true});
+    }catch(e){ console.warn('save token err:', e); }
+
+    // 4) إشعار ترحيبي محلي للتأكيد
+    try{
+      if(reg && reg.showNotification){
+        await reg.showNotification('✅ تم تفعيل الإشعارات', {
+          body: 'ستصلك الفواتير والدفعات فوراً على هذا الجهاز',
+          icon: '/icon-192.png',
+          badge: '/icon-192.png',
+          dir:'rtl', lang:'ar', tag:'welcome'
+        });
+      } else if(Notification.permission === 'granted'){
+        new Notification('✅ تم تفعيل الإشعارات', {
+          body: 'ستصلك الفواتير والدفعات فوراً',
+          dir:'rtl', lang:'ar'
+        });
+      }
+    }catch(e){}
+
+    toast('✅ تم تفعيل الإشعارات بنجاح');
+    
+    // إخفاء البطاقة
+    const card = document.getElementById('notifCard');
+    if(card) card.style.display = 'none';
+    const forcedEl = document.getElementById('notifForced');
+    if(forcedEl) forcedEl.classList.remove('open');
+    updateNotifBar();
+
+  }catch(e){
+    console.error(e);
+    toast('تعذّر تفعيل الإشعارات');
+    if(btn){ btn.disabled = false; btn.textContent = '✅ تفعيل الإشعارات الآن'; }
+  }
 }
 
 /* ===== نظام الإشعارات العالمي ===== */
@@ -1230,13 +1391,12 @@ async function requestNotification(){
       toast('❌ تم رفض الإشعارات');
       return false;
     }
-    // تسجيل Service Worker
     let reg = null;
     try{
       reg = await navigator.serviceWorker.register('/firebase-messaging-sw.js', { scope:'/' });
+      await navigator.serviceWorker.ready;
     }catch(e){ console.warn('SW register failed:', e); }
     
-    // الحصول على FCM token — يدعم push.js بأشكال مختلفة
     try{
       if(typeof window.initPush === 'function'){
         await window.initPush();
@@ -1247,13 +1407,11 @@ async function requestNotification(){
       }
     }catch(e){ console.warn('FCM token error:', e); }
     
-    // إشعار ترحيبي محلي كدليل
     try{
       if(reg && reg.showNotification){
         await reg.showNotification('✅ تم تفعيل الإشعارات', {
           body: 'ستصلك الفواتير والدفعات فوراً على هذا الجهاز',
           icon: '/icon-192.png',
-          badge: '/icon-192.png',
           dir: 'rtl', lang: 'ar'
         });
       }
@@ -1261,6 +1419,7 @@ async function requestNotification(){
     
     toast('✅ تم تفعيل الإشعارات بنجاح');
     updateNotifBar();
+    refreshPubNotifCard();
     const forcedEl = document.getElementById('notifForced');
     if(forcedEl) forcedEl.classList.remove('open');
     return true;
@@ -1286,7 +1445,7 @@ function showForcedNotifModal(){
   box.classList.add('open');
 }
 
-// ربط الأحداث
+// ربط أحداث الأزرار العلوية
 document.addEventListener('click', e=>{
   if(e.target && e.target.id === 'notifEnable'){ requestNotification(); }
   if(e.target && e.target.id === 'notifForceEnable'){ requestNotification(); }
@@ -1309,6 +1468,7 @@ if(NOTIF_SUPPORTED && navigator.permissions){
   navigator.permissions.query({name:'notifications'}).then(p=>{
     p.onchange = ()=>{ 
       updateNotifBar(); 
+      refreshPubNotifCard();
       if(notifGranted()){
         const forcedEl = document.getElementById('notifForced');
         if(forcedEl) forcedEl.classList.remove('open');
@@ -1320,7 +1480,11 @@ if(NOTIF_SUPPORTED && navigator.permissions){
 // إظهار شريط الإشعارات فور تحميل الصفحة
 window.addEventListener('load', ()=>{
   updateNotifBar();
-  setTimeout(showForcedNotifModal, 1500);
+  refreshPubNotifCard();
+  // عرض النافذة الإجبارية فقط للتاجر (ليس للعميل في الواجهة العامة)
+  if(!new URLSearchParams(location.search).get('c')){
+    setTimeout(showForcedNotifModal, 1500);
+  }
 });
 
 // فحص دوري (كل 5 ثوان)
