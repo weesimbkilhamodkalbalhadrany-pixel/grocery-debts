@@ -1,0 +1,8 @@
+[{
+      "relation": ["delegate_permission/common.handle_all_urls"],
+      "target": {
+        "namespace": "android_app",
+        "package_name": "app.vercel.grocery_debts.twa",
+        "sha256_cert_fingerprints": ["0E:54:98:C9:5E:29:12:DD:B2:E9:D2:80:FA:50:D7:12:D1:04:97:2C:74:4E:38:12:59:B7:F2:5B:F2:F2:08:52"]
+      }
+    }]
