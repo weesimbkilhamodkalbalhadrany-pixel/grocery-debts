@@ -571,7 +571,8 @@ async function activateCustomerNotifications(tk){
 }
 
 /* ===== التهيئة ===== */
-async function loadSettings(){try{const d=await getDoc(doc(db,'settings',S.user.uid));if(d.exists())S.settings={...S.settings,...d.data()}}catch(e){}}
+try{Object.assign(S.settings,JSON.parse(localStorage.st||'{}'))}catch(e){}
+async function loadSettings(){try{const d=await getDoc(doc(db,'settings',S.user.uid));if(d.exists()){S.settings={...S.settings,...d.data()};try{localStorage.st=JSON.stringify(S.settings)}catch(e){}}}catch(e){}}
 function attach(){
   S.unsubs.forEach(u=>u());S.unsubs=[];const u=S.user.uid;
   const sub=(col,cb)=>S.unsubs.push(onSnapshot(query(collection(db,col),where('owner','==',u)),s=>{cb(s.docs.map(d=>({id:d.id,...d.data()})));if(!S.formOpen)render()}));
@@ -583,7 +584,7 @@ function attach(){
 if('serviceWorker' in navigator)navigator.serviceWorker.register('sw.js').catch(()=>{});
 const tk=new URLSearchParams(location.search).get('c');
 if(tk)publicView(tk);
-else onAuthStateChanged(auth,async u=>{S.user=u;if(u){await loadSettings();attach();render()}else{S.unsubs.forEach(x=>x());S.unsubs=[];render()}});
+else onAuthStateChanged(auth,async u=>{S.user=u;if(u){loadSettings().then(()=>{if(!S.formOpen)render()});attach();render()}else{S.unsubs.forEach(x=>x());S.unsubs=[];render()}});
 </script>
 </body>
 </html>
