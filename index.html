@@ -61,6 +61,12 @@ body.offline #offbar{display:block}body.offline{padding-top:36px}
 <div id="offbar">📡 لا يوجد اتصال — تُعرض آخر بيانات محفوظة، والتسجيل يحتاج إنترنت</div><div id="app"></div><nav id="nav"></nav><div id="toast"></div>
 <div id="modal" class="modal" onclick="if(event.target.id==='modal')closeModal()"><div class="modal-box" id="modalBox"></div></div>
 
+<script>
+window._err=[];
+addEventListener('error',e=>{window._err.push((e.message||(e.target&&(e.target.src||e.target.href))||'').toString().slice(0,80))},true);
+setTimeout(()=>{const a=document.getElementById('app');if(a&&!a.innerHTML.trim()){
+a.innerHTML='<div style="text-align:center;padding:70px 20px"><div style="font-size:3rem">📡</div><h2>تعذّر تشغيل التطبيق</h2><p style="color:#6c7a89;margin:10px 0;font-size:.9rem">افتح التطبيق مرة واحدة مع إنترنت ليحفظ ملفاته، ثم جرّبه بدونه.</p><button class="btn" onclick="location.reload()">إعادة المحاولة</button><p style="color:#999;font-size:.65rem;margin-top:14px;direction:ltr">'+window._err.join(' | ')+'</p></div>'}},6000);
+</script>
 <script type="module">
 import{initializeApp}from"https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
 import{getAuth,GoogleAuthProvider,signInWithPopup,onAuthStateChanged,signOut,signInWithEmailAndPassword,createUserWithEmailAndPassword,sendPasswordResetEmail,setPersistence,browserLocalPersistence}from"https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
