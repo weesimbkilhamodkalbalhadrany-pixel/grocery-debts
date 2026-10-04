@@ -1,20 +1,17 @@
 {
-  "name": "الكامل سوفت - نظام محاسبي",
-  "short_name": "الكامل سوفت",
+  "name": "الكامل سوفت",
+  "short_name": "الكامل",
+  "description": "نظام محاسبي لإدارة الديون والمبيعات والمخزون",
   "start_url": "/",
+  "scope": "/",
   "display": "standalone",
-  "background_color": "#eef3f0",
-  "theme_color": "#0f7a55",
+  "orientation": "portrait",
+  "dir": "rtl",
+  "lang": "ar",
+  "background_color": "#14283b",
+  "theme_color": "#14283b",
   "icons": [
-    {
-      "src": "/icon-192.png",
-      "sizes": "192x192",
-      "type": "image/png"
-    },
-    {
-      "src": "/icon-512.png",
-      "sizes": "512x512",
-      "type": "image/png"
-    }
+    {"src": "/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any maskable"},
+    {"src": "/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any maskable"}
   ]
 }
