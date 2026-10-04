@@ -20,23 +20,54 @@ module.exports=async(req,res)=>{
   try{
     const jwt=(req.headers.authorization||'').replace('Bearer ','');
     const uid=await verify(jwt);if(!uid)return res.status(401).json({error:'auth'});
-    // استخراج العنوان (title) بالإضافة إلى التوكن والرسالة
+
     const{token,msg,title}=req.body||{};
     if(!/^[a-f0-9]{32,64}$/.test(token||'')||typeof msg!=='string'||!msg||msg.length>300)return res.status(400).json({error:'input'});
+
     const H={Authorization:'Bearer '+jwt};
     const a=await fetch(`${FS}/accounts/${token}`,{headers:H});
     if(!a.ok)return res.status(404).json({error:'account'});
     if((await a.json()).fields?.owner?.stringValue!==uid)return res.status(403).json({error:'owner'});
+
     const s=await fetch(`${FS}/accounts/${token}/subs`,{headers:H});
     const docs=(await s.json()).documents||[];
-    webpush.setVapidDetails(process.env.VAPID_SUBJECT||'mailto:admin@example.com',process.env.VAPID_PUBLIC_KEY,process.env.VAPID_PRIVATE_KEY);
-    // العنوان الديناميكي: يستخدم الاسم المُرسل من التطبيق (اسم المتجر)، وإذا لم يُرسل يستخدم "ديوني" كافتراضي
-    const payload=JSON.stringify({title:title||'ديوني',body:msg,url:`https://${req.headers.host}/?c=${token}`});
-    let sent=0;
+
+    webpush.setVapidDetails(
+      process.env.VAPID_SUBJECT||'mailto:admin@example.com',
+      process.env.VAPID_PUBLIC_KEY,
+      process.env.VAPID_PRIVATE_KEY
+    );
+
+    const payload=JSON.stringify({
+      title:title||'ديوني',
+      body:msg,
+      url:`https://${req.headers.host}/?c=${token}`
+    });
+
+    // urgency:high يوقظ الجهاز فوراً حتى في وضع السكون (Doze)
+    // TTL:86400 يُبقي الإشعار 24 ساعة إن كان الجهاز مطفأً أو بلا إنترنت
+    const opts={TTL:86400,urgency:'high'};
+
+    let sent=0,failed=0,removed=0;
     await Promise.all(docs.map(async d=>{
-      try{await webpush.sendNotification(JSON.parse(d.fields.sub.stringValue),payload);sent++}
-      catch(e){if(e.statusCode===404||e.statusCode===410)await fetch(`https://firestore.googleapis.com/v1/${d.name}`,{method:'DELETE',headers:H})}
+      try{
+        const sub=JSON.parse(d.fields.sub.stringValue);
+        await webpush.sendNotification(sub,payload,opts);
+        sent++;
+      }catch(e){
+        failed++;
+        console.error('push fail',e.statusCode,e.body||e.message);
+        // اشتراك منتهي أو ملغى: احذفه
+        if(e.statusCode===404||e.statusCode===410){
+          removed++;
+          await fetch(`https://firestore.googleapis.com/v1/${d.name}`,{method:'DELETE',headers:H}).catch(()=>{});
+        }
+      }
     }));
-    res.json({ok:true,sent});
-  }catch(e){res.status(500).json({error:'server'})}
+
+    res.json({ok:true,sent,failed,removed,total:docs.length});
+  }catch(e){
+    console.error('notify error',e);
+    res.status(500).json({error:'server'});
+  }
 };
