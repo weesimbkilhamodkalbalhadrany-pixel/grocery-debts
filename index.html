@@ -6,6 +6,8 @@
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,viewport-fit=cover">
 <meta name="theme-color" content="#14283b">
 <link rel="manifest" href="/manifest.json">
+<link rel="icon" type="image/png" href="/icon-192.png">
+<link rel="apple-touch-icon" href="/icon-192.png">
 <title>الكامل سوفت — نظام محاسبي متكامل</title>
 <style>
 :root{--ink:#14283b;--ink2:#1f4466;--am:#f4a93a;--bg:#f3f5f8;--c:#fff;--t:#14212e;--m:#6c7a89;--bd:#e3e8ee;--red:#e5484d;--grn:#1f9d6b;--blu:#3b7de0;--pur:#7a5af8;--org:#e8862b}
@@ -49,6 +51,7 @@ table{width:100%;border-collapse:collapse;font-size:.85rem}th,td{padding:8px;bor
 .modal{position:fixed;inset:0;background:rgba(8,18,28,.55);display:none;align-items:flex-end;justify-content:center;z-index:200}.modal.open{display:flex}
 .modal-box{background:var(--c);width:100%;max-width:520px;border-radius:24px 24px 0 0;padding:18px;max-height:88vh;overflow:auto;animation:up .22s}
 @keyframes up{from{transform:translateY(40px);opacity:.4}}
+.lg{width:80px;height:80px;border-radius:24px;display:block;margin:0 auto 10px;box-shadow:0 10px 24px rgba(20,40,59,.28)}
 .pub-logo{width:60px;height:60px;background:var(--ink);color:var(--am);border-radius:18px;display:flex;align-items:center;justify-content:center;font-size:1.8rem;margin:0 auto 10px}
 .nc{background:linear-gradient(150deg,var(--ink),var(--ink2));color:#fff;text-align:center;padding:18px}.nc p{font-size:.78rem;opacity:.9;margin:6px 0 12px}.nc .bell{font-size:2.2rem}
 .nc button{background:var(--am);color:#2a1d05;border:0;border-radius:12px;padding:12px;font-weight:800;width:100%;font-size:.92rem;cursor:pointer}
@@ -182,7 +185,7 @@ function listPage(o){
 function authErr(e){const m={'auth/invalid-email':'البريد غير صحيح','auth/user-not-found':'لا يوجد حساب بهذا البريد','auth/wrong-password':'كلمة المرور غير صحيحة','auth/invalid-credential':'البريد أو كلمة المرور غير صحيحة','auth/email-already-in-use':'البريد مستخدم مسبقاً','auth/weak-password':'كلمة المرور قصيرة (6 أحرف على الأقل)','auth/too-many-requests':'محاولات كثيرة، حاول لاحقاً','auth/network-request-failed':'تعذّر الاتصال','auth/popup-closed-by-user':'أُغلقت نافذة الدخول','auth/popup-blocked':'المتصفح منع النافذة','auth/missing-name':'اكتب اسمك الكامل'};return m[e?.code]||('خطأ: '+(e?.code||''))}
 function loginView(){
   N.innerHTML='';const reg=S._authTab==='register';
-  A.innerHTML=`<div style="text-align:center;padding:44px 0 12px"><div class="pub-logo">📒</div><h1>الكامل سوفت</h1><small>حساباتك وديونك في جيبك</small></div>
+  A.innerHTML=`<div style="text-align:center;padding:44px 0 12px"><img class="lg" src="icon-192.png" alt=""><h1>الكامل سوفت</h1><small>حساباتك وديونك في جيبك</small></div>
   <div class="card"><div class="row" style="margin-bottom:10px"><button class="btn ${reg?'g':''} w" id="tl">دخول</button><button class="btn ${reg?'':'g'} w" id="tr">حساب جديد</button></div>
   ${reg?'<label>الاسم الكامل</label><input id="a-name">':''}
   <label>البريد الإلكتروني</label><input id="a-email" type="email" autocomplete="email">
@@ -529,7 +532,7 @@ function invoicePDF(rec,kind){
 /* ===== واجهة العميل العامة ===== */
 function publicView(tk){
   N.innerHTML='';
-  A.innerHTML=`<div style="text-align:center;padding:18px 0 6px"><div class="pub-logo">📒</div><h1>كشف حساب</h1><small id="pub-store">جاري التحميل...</small></div>
+  A.innerHTML=`<div style="text-align:center;padding:18px 0 6px"><img class="lg" src="icon-192.png" alt=""><h1>كشف حساب</h1><small id="pub-store">جاري التحميل...</small></div>
   <div class="card nc" id="notifCard"></div>
   <div class="hero" id="acc" style="text-align:center"><small>جاري تحميل البيانات...</small></div>
   <div class="g2" id="pub-summary" style="display:none"><div class="stat"><div class="l">إجمالي الديون</div><div class="n due" id="pub-debt">0</div></div><div class="stat"><div class="l">إجمالي الدفعات</div><div class="n ok" id="pub-pay">0</div></div></div>
