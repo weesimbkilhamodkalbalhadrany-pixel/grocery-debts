@@ -3,6 +3,6 @@
       "target": {
         "namespace": "android_app",
         "package_name": "app.vercel.grocery_debts.twa",
-        "sha256_cert_fingerprints": ["0E:54:98:C9:5E:29:12:DD:B2:E9:D2:80:FA:50:D7:12:D1:04:97:2C:74:4E:38:12:59:B7:F2:5B:F2:F2:08:52"]
+        "sha256_cert_fingerprints": ["87:AF:B8:C8:2D:92:B5:00:91:45:C1:3E:FE:56:FC:04:6F:56:07:51:DB:E0:2A:73:ED:00:FB:43:02:70:B4:3A"]
       }
     }]
