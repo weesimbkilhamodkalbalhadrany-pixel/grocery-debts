@@ -2,23 +2,23 @@
 <html lang="ar" dir="rtl">
 <head>
 <meta charset="UTF-8">
-<script type="module" src="push.js"></script>
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,viewport-fit=cover">
 <meta name="theme-color" content="#14283b">
 <link rel="manifest" href="/manifest.json">
 <link rel="icon" type="image/png" href="/icon-192.png">
-<link rel="apple-touch-icon" href="/icon-192.png">
 <title>الكامل سوفت — نظام محاسبي متكامل</title>
 <style>
 :root{--ink:#14283b;--ink2:#1f4466;--am:#f4a93a;--bg:#f3f5f8;--c:#fff;--t:#14212e;--m:#6c7a89;--bd:#e3e8ee;--red:#e5484d;--grn:#1f9d6b;--blu:#3b7de0;--pur:#7a5af8;--org:#e8862b}
 :root[data-theme=dark]{--bg:#0e1822;--c:#16242f;--t:#e8eef4;--m:#8da0b2;--bd:#233443}
 *{box-sizing:border-box;margin:0;padding:0;font-family:Cairo,Tahoma,system-ui,sans-serif;-webkit-tap-highlight-color:transparent}
-body{background:var(--bg);color:var(--t);max-width:520px;margin:auto;min-height:100vh;padding:12px 14px 110px}
+body{background:var(--bg);color:var(--t);max-width:520px;margin:auto;min-height:100vh;padding:12px 14px 110px;overflow-x:hidden}
 h1{font-size:1.25rem;font-weight:800}h2{font-size:1.05rem;font-weight:800}small{color:var(--m);font-size:.76rem}
-.card{background:var(--c);border-radius:18px;padding:14px;margin:10px 0;border:1px solid var(--bd)}
+.card{background:var(--c);border-radius:18px;padding:14px;margin:10px 0;border:1px solid var(--bd);animation:fade .25s}
+@keyframes fade{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}
 .row{display:flex;justify-content:space-between;align-items:center;gap:8px}
 .g2{display:grid;grid-template-columns:1fr 1fr;gap:10px}.g3{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}.g4{display:grid;grid-template-columns:repeat(4,1fr);gap:8px}
-.btn{border:0;border-radius:14px;padding:12px 14px;font-size:.92rem;background:var(--ink);color:#fff;cursor:pointer;display:inline-flex;align-items:center;justify-content:center;gap:6px;font-weight:800}
+.btn{border:0;border-radius:14px;padding:12px 14px;font-size:.92rem;background:var(--ink);color:#fff;cursor:pointer;display:inline-flex;align-items:center;justify-content:center;gap:6px;font-weight:800;transition:transform .1s}
+.btn:active{transform:scale(.97)}
 :root[data-theme=dark] .btn{background:var(--ink2)}
 .btn.am{background:var(--am);color:#2a1d05}.btn.r{background:var(--red)}.btn.gr{background:var(--grn)}
 .btn.o{background:transparent;color:var(--t);border:1.5px solid var(--bd)}.btn.g{background:var(--bg);color:var(--t)}
@@ -52,542 +52,992 @@ table{width:100%;border-collapse:collapse;font-size:.85rem}th,td{padding:8px;bor
 .modal-box{background:var(--c);width:100%;max-width:520px;border-radius:24px 24px 0 0;padding:18px;max-height:88vh;overflow:auto;animation:up .22s}
 @keyframes up{from{transform:translateY(40px);opacity:.4}}
 .lg{width:80px;height:80px;border-radius:24px;display:block;margin:0 auto 10px;box-shadow:0 10px 24px rgba(20,40,59,.28)}
-.pub-logo{width:60px;height:60px;background:var(--ink);color:var(--am);border-radius:18px;display:flex;align-items:center;justify-content:center;font-size:1.8rem;margin:0 auto 10px}
 .nc{background:linear-gradient(150deg,var(--ink),var(--ink2));color:#fff;text-align:center;padding:18px}.nc p{font-size:.78rem;opacity:.9;margin:6px 0 12px}.nc .bell{font-size:2.2rem}
 .nc button{background:var(--am);color:#2a1d05;border:0;border-radius:12px;padding:12px;font-weight:800;width:100%;font-size:.92rem;cursor:pointer}
-#offbar{display:none;position:fixed;top:0;left:0;right:0;background:var(--red);color:#fff;text-align:center;font-size:.76rem;padding:6px;z-index:400;font-weight:600}
+#offbar{display:none;position:fixed;top:0;left:0;right:0;background:var(--org);color:#fff;text-align:center;font-size:.76rem;padding:6px;z-index:400;font-weight:600}
 body.offline #offbar{display:block}body.offline{padding-top:36px}
+.badge{display:inline-block;padding:2px 8px;border-radius:8px;font-size:.68rem;font-weight:800;margin-right:4px}
+.badge.local{background:#fff2d9;color:#8a5a00}.badge.sync{background:#d9f3e6;color:#0f6a41}
 @media print{#nav,.btn,.nc,.ic{display:none!important}body{background:#fff;padding:0}}
 </style>
 </head>
 <body>
-<div id="offbar">📡 لا يوجد اتصال — تُعرض آخر بيانات محفوظة، والتسجيل يحتاج إنترنت</div><div id="app"></div><nav id="nav"></nav><div id="toast"></div>
-<div id="modal" class="modal" onclick="if(event.target.id==='modal')closeModal()"><div class="modal-box" id="modalBox"></div></div>
+<div id="offbar">📡 وضع بدون إنترنت — كل العمليات تُحفظ على الهاتف وترفع تلقائياً عند العودة</div>
+<div id="app"></div><nav id="nav"></nav><div id="toast"></div>
+<div id="modal" class="modal" onclick="if(event.target.id==='modal')history.back()"><div class="modal-box" id="modalBox"></div></div>
 
 <script>
-window._err=[];
-addEventListener('error',e=>{window._err.push((e.message||(e.target&&(e.target.src||e.target.href))||'').toString().slice(0,80))},true);
-setTimeout(()=>{const a=document.getElementById('app');if(a&&!a.innerHTML.trim()){
-a.innerHTML='<div style="text-align:center;padding:70px 20px"><div style="font-size:3rem">📡</div><h2>تعذّر تشغيل التطبيق</h2><p style="color:#6c7a89;margin:10px 0;font-size:.9rem">افتح التطبيق مرة واحدة مع إنترنت ليحفظ ملفاته، ثم جرّبه بدونه.</p><button class="btn" onclick="location.reload()">إعادة المحاولة</button><p style="color:#999;font-size:.65rem;margin-top:14px;direction:ltr">'+window._err.join(' | ')+'</p></div>'}},6000);
-</script>
-<script type="module">
-import{initializeApp}from"https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
-import{getAuth,GoogleAuthProvider,signInWithPopup,onAuthStateChanged,signOut,signInWithEmailAndPassword,createUserWithEmailAndPassword,sendPasswordResetEmail,setPersistence,browserLocalPersistence}from"https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
-import{getFirestore,initializeFirestore,persistentLocalCache,persistentMultipleTabManager,doc,setDoc,getDoc,collection,query,where,orderBy,onSnapshot,writeBatch,increment,updateDoc}from"https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+/* ============================================================
+   1) IndexedDB — قاعدة البيانات المحلية (تعمل بدون إنترنت)
+   ============================================================ */
+const LDB = {
+  db: null, ready: null,
+  init() {
+    if (this.ready) return this.ready;
+    this.ready = new Promise((res, rej) => {
+      const r = indexedDB.open('kamalsoft_db', 1);
+      r.onupgradeneeded = e => {
+        const db = e.target.result;
+        ['accounts','suppliers','products','sales','purchases','expenses','ledger','employees']
+          .forEach(s => { if (!db.objectStoreNames.contains(s)) db.createObjectStore(s, { keyPath: 'id' }); });
+      };
+      r.onsuccess = () => { this.db = r.result; res(); };
+      r.onerror = () => rej(r.error);
+    });
+    return this.ready;
+  },
+  async all(store) {
+    await this.init();
+    return new Promise((res, rej) => {
+      const q = this.db.transaction(store, 'readonly').objectStore(store).getAll();
+      q.onsuccess = () => res(q.result || []);
+      q.onerror = () => rej(q.error);
+    });
+  },
+  async put(store, data) {
+    await this.init();
+    return new Promise((res, rej) => {
+      const tx = this.db.transaction(store, 'readwrite');
+      tx.objectStore(store).put(data);
+      tx.oncomplete = () => res();
+      tx.onerror = () => rej(tx.error);
+    });
+  },
+  async bulk(ops) {
+    await this.init();
+    return new Promise((res, rej) => {
+      const stores = [...new Set(ops.map(o => o.s))];
+      const tx = this.db.transaction(stores, 'readwrite');
+      ops.forEach(o => {
+        const st = tx.objectStore(o.s);
+        if (o.del) o.del.forEach(id => st.delete(id));
+        if (o.put) (Array.isArray(o.put) ? o.put : [o.put]).forEach(d => st.put(d));
+      });
+      tx.oncomplete = () => res();
+      tx.onerror = () => rej(tx.error);
+    });
+  },
+  async clear() {
+    await this.init();
+    const stores = ['accounts','suppliers','products','sales','purchases','expenses','ledger','employees'];
+    const tx = this.db.transaction(stores, 'readwrite');
+    stores.forEach(s => tx.objectStore(s).clear());
+    return new Promise(r => tx.oncomplete = r);
+  }
+};
 
-const fb=initializeApp({apiKey:"AIzaSyDaLsIF93OD-Lr9y51j_s4wB9OzahLUiTQ",authDomain:"grocery-debts.firebaseapp.com",projectId:"grocery-debts",storageBucket:"grocery-debts.firebasestorage.app",messagingSenderId:"484535933298",appId:"1:484535933298:web:87f8e2ea08a6d26231e5eb"});
-const auth=getAuth(fb);let db;
-try{db=initializeFirestore(fb,{localCache:persistentLocalCache({tabManager:persistentMultipleTabManager()})})}catch(e){db=getFirestore(fb)}
+/* ============================================================
+   2) طبقة المزامنة مع السحابة (اختيارية تماماً)
+   ============================================================ */
+const Cloud = {
+  get queue() { try { return JSON.parse(localStorage.pendingOps || '[]'); } catch { return []; } },
+  set queue(v) { localStorage.pendingOps = JSON.stringify(v); },
+  push(store, id, data, op = 'set') {
+    const q = this.queue; q.push({ store, id, data, op, t: Date.now() }); this.queue = q;
+    this.flush();
+  },
+  async flush() {
+    if (!window._fb || !navigator.onLine || !window._user) return;
+    const q = this.queue; if (!q.length) return;
+    const rem = [];
+    for (const p of q) {
+      try {
+        const { doc, setDoc, deleteDoc } = window._fbmod;
+        if (p.op === 'delete') await deleteDoc(doc(window._db, p.store, p.id));
+        else await setDoc(doc(window._db, p.store, p.id), p.data, { merge: true });
+      } catch (e) {
+        if (e.code !== 'unavailable' && e.code !== 'deadline-exceeded') console.warn('sync err', e.code);
+        rem.push(p);
+      }
+    }
+    this.queue = rem;
+    if (!rem.length) toast('☁️ تمت المزامنة');
+  }
+};
+window.addEventListener('online', () => { Cloud.flush(); });
+window.addEventListener('offline', () => {});
 
-/* ===== أدوات ===== */
-const $=s=>document.querySelector(s),A=$('#app'),N=$('#nav');
-const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
-const n2=n=>Number(n||0).toLocaleString('en-US',{maximumFractionDigits:2});
-const fmt=n=>n2(n)+' '+S.settings.currency;
-const dt=ts=>new Date(ts).toLocaleString('ar-EG',{dateStyle:'short',timeStyle:'short'});
-const dOnly=ts=>new Date(ts).toLocaleDateString('ar-EG');
-const toast=m=>{const t=$('#toast');t.textContent=m;t.style.display='block';clearTimeout(t._t);t._t=setTimeout(()=>t.style.display='none',2600)};
-const newToken=()=>[...crypto.getRandomValues(new Uint8Array(20))].map(b=>b.toString(16).padStart(2,'0')).join('');
-const link=t=>location.origin+location.pathname+'?c='+t;
-const initials=s=>(s||'?').trim()[0]||'?';
-const startDay=d=>{const x=new Date(d);x.setHours(0,0,0,0);return x.getTime()};
-const sum=(a,f)=>a.reduce((n,x)=>n+(f(x)||0),0);
-const pos=b=>Math.max(b||0,0);
-const off=()=>{if(navigator.onLine)return false;toast('يرجى الاتصال بالإنترنت لتنفيذ هذه العملية');return true};
-const setNet=()=>document.body.classList.toggle('offline',!navigator.onLine);
-addEventListener('online',setNet);addEventListener('offline',setNet);setNet();
-const LIBS={qr:['https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js',()=>window.QRCode],chart:['https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js',()=>window.Chart],pdf:['https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js',()=>window.html2pdf]};
-const _lp={};
-const need=k=>{const[u,t]=LIBS[k];if(t())return Promise.resolve();return _lp[k]||(_lp[k]=new Promise((ok,no)=>{const e=document.createElement('script');e.src=u;e.onload=ok;e.onerror=()=>{delete _lp[k];no()};document.head.appendChild(e)}))};
-try{document.documentElement.dataset.theme=localStorage.th||''}catch(e){}
-
-const S={user:null,view:'dashboard',_authTab:'login',customerId:null,supplierId:null,employeeId:null,
-customers:[],suppliers:[],products:[],sales:[],purchases:[],expenses:[],ledger:[],employees:[],
-settings:{name:'الكامل سوفت',currency:'ر.ي',phone:'',address:'',autoWhatsApp:true},
-cart:[],formOpen:false,q:'',cf:'all',per:'d',lt:'',unsubs:[],chart:null};
-
-function modal(h){$('#modalBox').innerHTML=h;$('#modal').classList.add('open')}
-window.closeModal=()=>$('#modal').classList.remove('open');
-const ledgerData=(type,label,amount,dir,cash,extra={})=>({owner:S.user.uid,ts:Date.now(),type,label,amount:Math.abs(amount),dir,cash:cash||0,...extra});
-const newLedgerRef=()=>doc(collection(db,'ledger'));
-const btns=ok=>`<div class="row" style="margin-top:12px"><button class="btn o w" onclick="closeModal()">إلغاء</button><button class="btn w" id="sv">${ok||'حفظ'}</button></div>`;
-
-/* ===== واتساب ===== */
-function whatsappSend(phone,name,msg){
-  if(!phone)return toast('لا يوجد رقم هاتف مسجل');
-  let p=phone.replace(/[^\d]/g,'');if(p.startsWith('00'))p=p.slice(2);
-  if(!p.startsWith('967')){p='967'+p.replace(/^0+/,'')}
-  window.open('https://wa.me/'+p+'?text='+encodeURIComponent(`السلام عليكم ${name} 🌟\n\n${msg}\n\n— ${S.settings.name}`),'_blank');
+/* ============================================================
+   3) نظام زر الرجوع (Back Button) — Navigator Stack
+   ============================================================ */
+const Nav = {
+  stack: [],
+  current: { view: 'dashboard', id: null },
+  init() {
+    history.replaceState({ __app: true, view: 'dashboard', id: null }, '');
+    window.addEventListener('popstate', e => {
+      // 1) لو فيه Modal مفتوح → أغلقها فقط
+      if ($('#modal').classList.contains('open')) {
+        closeModal(true); // silent
+        return;
+      }
+      // 2) لو الحالة تعود لشاشة معروفة → انتقل لها
+      if (e.state && e.state.__app) {
+        S.view = e.state.view || 'dashboard';
+        if (e.state.view === 'customer') S.customerId = e.state.id;
+        if (e.state.view === 'supplier') S.supplierId = e.state.id;
+        if (e.state.view === 'employee') S.employeeId = e.state.id;
+        S.formOpen = false; S.cart = [];
+        render(true);
+      } else {
+        // ما فيه حالة داخل التطبيق — اسمح بالخروج
+        if (confirm('هل تريد الخروج من التطبيق؟')) history.go(-2);
+        else history.pushState({ __app: true, view: S.view, id: currentId() }, '');
+      }
+    });
+  },
+  push(view, id) {
+    history.pushState({ __app: true, view, id: id || null }, '');
+    this.current = { view, id };
+  }
+};
+function currentId() {
+  if (S.view === 'customer') return S.customerId;
+  if (S.view === 'supplier') return S.supplierId;
+  if (S.view === 'employee') return S.employeeId;
+  return null;
 }
-function notifyDebt(name,phone,amount,balance,kind){
-  if(!S.settings.autoWhatsApp||!phone)return;
-  const c=S.settings.currency,d=kind==='debt';
-  const msg=d?`تم تسجيل دين بمبلغ *${n2(amount)} ${c}*\nالرصيد الحالي: *${n2(balance)} ${c}*\n\nشكراً لتعاملك معنا 🌹`:`تم تسجيل دفعة بمبلغ *${n2(amount)} ${c}*\nالرصيد المتبقي: *${n2(balance)} ${c}*\n\nشكراً لك 💚`;
-  modal(`<h2>إشعار واتساب</h2><p style="margin:10px 0;font-size:.9rem;color:var(--m)">إرسال إشعار إلى <b>${esc(name)}</b>؟</p>
-  <div class="card" style="font-size:.85rem;white-space:pre-wrap">${esc(msg)}</div>
-  <div class="row"><button class="btn o w" onclick="closeModal()">لاحقاً</button><button class="btn gr w" id="wa-go">📱 إرسال</button></div>`);
-  $('#wa-go').onclick=()=>{whatsappSend(phone,name,msg);closeModal()};
-}
-const remind=c=>whatsappSend(c.phone,c.name,`نذكّرك بأن رصيد حسابك المستحق *${n2(c.balance)} ${S.settings.currency}*.\nكشف حسابك: ${link(c.id)}`);
 
-/* ===== التنقل ===== */
-function go(v,id){
-  if((v==='sale-new'||v==='purchase-new')&&off())return;
-  S.view=v;S.formOpen=false;S.q='';S.cart=[];
-  if(v==='customer')S.customerId=id;if(v==='supplier')S.supplierId=id;if(v==='employee')S.employeeId=id;
-  window.scrollTo(0,0);render();
-}
-function nav(){
-  const grp={customer:'customers',sale:'sales','sale-new':'sales'};
-  const cur=grp[S.view]||(['dashboard','customers','sales'].includes(S.view)?S.view:'more');
-  const it=[['dashboard','🏠','الرئيسية'],['customers','👥','العملاء'],['fab','+',''],['sales','🧾','المبيعات'],['more','☰','المزيد']];
-  N.innerHTML=it.map(([v,i,l])=>v==='fab'?`<a class="fab" data-v="fab">+</a>`:`<a class="${cur===v?'on':''}" data-v="${v}"><span>${i}</span><small>${l}</small></a>`).join('');
-  N.querySelectorAll('[data-v]').forEach(e=>e.onclick=()=>e.dataset.v==='fab'?quickSheet():go(e.dataset.v));
-}
-const V={dashboard:()=>dash(),customers:()=>customersList(),customer:()=>partyPage('customer'),suppliers:()=>suppliersList(),supplier:()=>partyPage('supplier'),
-products:()=>productsList(),sales:()=>docList('sale'),'sale-new':()=>invNew('sale'),purchases:()=>docList('purchase'),'purchase-new':()=>invNew('purchase'),
-expenses:()=>expensesList(),employees:()=>employeesList(),employee:()=>employeePage(),reports:()=>reportsView(),ledger:()=>ledgerView(),settings:()=>settingsView(),more:()=>moreView()};
-function render(){if(!S.user){loginView();return}nav();(V[S.view]||V.dashboard)()}
+/* ============================================================
+   4) أدوات مساعدة
+   ============================================================ */
+const $ = s => document.querySelector(s), A = $('#app'), N = $('#nav');
+const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;' }[c]));
+const n2 = n => Number(n || 0).toLocaleString('en-US', { maximumFractionDigits: 2 });
+const fmt = n => n2(n) + ' ' + S.settings.currency;
+const dt = ts => new Date(ts).toLocaleString('ar-EG', { dateStyle: 'short', timeStyle: 'short' });
+const dOnly = ts => new Date(ts).toLocaleDateString('ar-EG');
+const toast = m => { const t = $('#toast'); t.textContent = m; t.style.display = 'block'; clearTimeout(t._t); t._t = setTimeout(() => t.style.display = 'none', 2600); };
+const newToken = () => [...crypto.getRandomValues(new Uint8Array(20))].map(b => b.toString(16).padStart(2, '0')).join('');
+const link = t => location.origin + location.pathname + '?c=' + t;
+const initials = s => (s || '?').trim()[0] || '?';
+const startDay = d => { const x = new Date(d); x.setHours(0,0,0,0); return x.getTime(); };
+const sum = (a, f) => a.reduce((n, x) => n + (f(x) || 0), 0);
+const pos = b => Math.max(b || 0, 0);
+const off = () => false; // ← لم نعد نحتاج حظر العمليات عند انقطاع النت
+const setNet = () => document.body.classList.toggle('offline', !navigator.onLine);
+addEventListener('online', setNet); addEventListener('offline', setNet); setNet();
+try { document.documentElement.dataset.theme = localStorage.th || ''; } catch {}
 
-/* ===== القائمة السريعة (+) ===== */
-function quickSheet(){
+/* ============================================================
+   5) حالة التطبيق
+   ============================================================ */
+const S = {
+  user: null, view: 'dashboard', _authTab: 'login',
+  customerId: null, supplierId: null, employeeId: null,
+  customers: [], suppliers: [], products: [], sales: [], purchases: [],
+  expenses: [], ledger: [], employees: [],
+  settings: { name: 'الكامل سوفت', currency: 'ر.ي', phone: '', address: '', autoWhatsApp: true },
+  cart: [], formOpen: false, q: '', cf: 'all', per: 'd', lt: '', unsubs: [], chart: null,
+  _loaded: false
+};
+
+/* ============================================================
+   6) طبقة البيانات الموحدة — Local First
+   ============================================================ */
+const mapStore = { customer: 'accounts', supplier: 'suppliers', product: 'products', sale: 'sales', purchase: 'purchases', expense: 'expenses', ledger: 'ledger', employee: 'employees' };
+async function dbSave(store, data) {
+  data.id = data.id || newToken();
+  data.owner = S.user?.uid || 'local';
+  data._updated = Date.now();
+  await LDB.put(store, data);
+  // حدّث الذاكرة
+  const k = { accounts:'customers', suppliers:'suppliers', products:'products', sales:'sales', purchases:'purchases', expenses:'expenses', ledger:'ledger', employees:'employees' }[store];
+  if (k && S[k]) {
+    const i = S[k].findIndex(x => x.id === data.id);
+    if (i >= 0) S[k][i] = data; else S[k].unshift(data);
+  }
+  // ادفع للسحابة (لو مسجل دخول + فيه نت)
+  if (S.user && !S.user.isAnonymous) Cloud.push(store, data.id, data, 'set');
+  return data;
+}
+async function dbDelete(store, id) {
+  await LDB.bulk([{ s: store, del: [id] }]);
+  const k = { accounts:'customers', suppliers:'suppliers', products:'products', sales:'sales', purchases:'purchases', expenses:'expenses', ledger:'ledger', employees:'employees' }[store];
+  if (k && S[k]) S[k] = S[k].filter(x => x.id !== id);
+  if (S.user && !S.user.isAnonymous) Cloud.push(store, id, null, 'delete');
+}
+
+/* ============================================================
+   7) تحميل البيانات — من IndexedDB أولاً
+   ============================================================ */
+async function loadAll() {
+  const [customers, suppliers, products, sales, purchases, expenses, ledger, employees] = await Promise.all([
+    LDB.all('accounts'), LDB.all('suppliers'), LDB.all('products'), LDB.all('sales'),
+    LDB.all('purchases'), LDB.all('expenses'), LDB.all('ledger'), LDB.all('employees')
+  ]);
+  const byTs = a => a.sort((x, y) => (y.ts || 0) - (x.ts || 0));
+  S.customers = customers; S.suppliers = suppliers; S.products = products;
+  S.sales = byTs(sales); S.purchases = byTs(purchases); S.expenses = byTs(expenses);
+  S.ledger = byTs(ledger); S.employees = employees.sort((a, b) => (a.name || '').localeCompare(b.name || ''));
+  S._loaded = true;
+}
+
+/* ============================================================
+   8) قائمة الأصناف + الـ Navigation
+   ============================================================ */
+const V = {
+  dashboard: () => dash(), customers: () => customersList(), customer: () => partyPage('customer'),
+  suppliers: () => suppliersList(), supplier: () => partyPage('supplier'),
+  products: () => productsList(), sales: () => docList('sale'), 'sale-new': () => invNew('sale'),
+  purchases: () => docList('purchase'), 'purchase-new': () => invNew('purchase'),
+  expenses: () => expensesList(), employees: () => employeesList(), employee: () => employeePage(),
+  reports: () => reportsView(), ledger: () => ledgerView(), settings: () => settingsView(),
+  more: () => moreView(), login: () => loginView()
+};
+function render(silent) {
+  nav();
+  (V[S.view] || V.dashboard)();
+}
+function nav() {
+  const grp = { customer: 'customers', sale: 'sales', 'sale-new': 'sales' };
+  const cur = grp[S.view] || (['dashboard','customers','sales'].includes(S.view) ? S.view : 'more');
+  const it = [['dashboard','🏠','الرئيسية'],['customers','👥','العملاء'],['fab','+',''],['sales','🧾','المبيعات'],['more','☰','المزيد']];
+  N.innerHTML = it.map(([v, i, l]) => v === 'fab'
+    ? `<a class="fab" data-v="fab">+</a>`
+    : `<a class="${cur === v ? 'on' : ''}" data-v="${v}"><span>${i}</span><small>${l}</small></a>`).join('');
+  N.querySelectorAll('[data-v]').forEach(e => e.onclick = () => {
+    if (e.dataset.v === 'fab') return quickSheet();
+    if (e.dataset.v === S.view) return;
+    S.view = e.dataset.v; S.formOpen = false; S.q = ''; S.cart = [];
+    Nav.push(e.dataset.v, null);
+    window.scrollTo(0, 0); render();
+  });
+}
+function go(v, id, push = true) {
+  S.view = v; S.formOpen = false; S.q = ''; S.cart = [];
+  if (v === 'customer') S.customerId = id;
+  if (v === 'supplier') S.supplierId = id;
+  if (v === 'employee') S.employeeId = id;
+  if (push) Nav.push(v, id);
+  window.scrollTo(0, 0); render();
+}
+window.go = go;
+
+/* ============================================================
+   9) Modal
+   ============================================================ */
+function modal(h) {
+  $('#modalBox').innerHTML = h;
+  $('#modal').classList.add('open');
+  history.pushState({ __modal: true }, '');
+}
+window.closeModal = (silent) => {
+  if (!$('#modal').classList.contains('open')) return;
+  $('#modal').classList.remove('open');
+  if (!silent) history.back(); // يخلي زر الرجوع متزامن
+};
+const btns = (ok = 'حفظ') => `<div class="row" style="margin-top:12px"><button class="btn o w" onclick="closeModal()">إلغاء</button><button class="btn w" id="sv">${ok}</button></div>`;
+
+/* ============================================================
+   10) المكوّنات المشتركة
+   ============================================================ */
+const ledgerData = (type, label, amount, dir, cash, extra = {}) => ({ id: newToken(), owner: S.user?.uid || 'local', ts: Date.now(), type, label, amount: Math.abs(amount), dir, cash: cash || 0, ...extra });
+const rowH = (col, t, s, v, vc, id, x = '') => `<div class="item" data-id="${id}"><div class="row" style="gap:11px"><div class="av" style="background:${col}22;color:${col}">${esc(initials(t))}</div><div><b>${esc(t)}</b><br><small>${s}</small></div></div><div style="text-align:left"><b class="${vc}">${v}</b>${x}</div></div>`;
+function txRow(l) { const i = l.dir === 'in'; return `<div class="tx"><div><b style="font-size:.86rem">${esc(l.label || l.type)}</b><br><small>${dt(l.ts)}${l.note ? ' · ' + esc(l.note) : ''}</small></div><b class="${i ? 'ok' : 'due'}">${i ? '+' : '-'}${n2(l.amount)}</b></div>`; }
+function listPage(o) {
+  A.innerHTML = `<div class="top"><h1>${o.title}</h1>${o.add ? `<button class="btn am sm" id="add">${o.add}</button>` : ''}</div>${o.head || ''}
+  ${o.chips ? `<div class="chips">${o.chips.map(([v, l]) => `<div class="chip ${o.cur === v ? 'on' : ''}" data-c="${v}">${l}</div>`).join('')}</div>` : ''}
+  <input id="sr" placeholder="🔎 بحث" value="${esc(S.q)}"><div class="card" id="lst"></div>`;
+  const draw = () => { $('#lst').innerHTML = o.rows(S.q.toLowerCase()) || '<p class="hint">لا توجد نتائج</p>'; $('#lst').querySelectorAll('[data-id]').forEach(e => e.onclick = () => o.click(e.dataset.id)); };
+  if ($('#add')) $('#add').onclick = o.onAdd;
+  A.querySelectorAll('[data-c]').forEach(e => e.onclick = () => o.onChip(e.dataset.c));
+  $('#sr').oninput = e => { S.q = e.target.value; draw(); };
+  draw();
+}
+
+/* ============================================================
+   11) WhatsApp
+   ============================================================ */
+function whatsappSend(phone, name, msg) {
+  if (!phone) return toast('لا يوجد رقم هاتف مسجل');
+  let p = phone.replace(/[^\d]/g, ''); if (p.startsWith('00')) p = p.slice(2);
+  if (!p.startsWith('967')) p = '967' + p.replace(/^0+/, '');
+  window.open('https://wa.me/' + p + '?text=' + encodeURIComponent(`السلام عليكم ${name} 🌟\n\n${msg}\n\n— ${S.settings.name}`), '_blank');
+}
+const remind = c => whatsappSend(c.phone, c.name, `نذكّرك بأن رصيد حسابك المستحق *${n2(c.balance)} ${S.settings.currency}*.\nكشف حسابك: ${link(c.id)}`);
+
+/* ============================================================
+   12) القائمة السريعة (+)
+   ============================================================ */
+function quickSheet() {
   modal(`<h2>ماذا تريد أن تسجّل؟</h2><div class="g2" style="margin-top:12px">
   <button class="btn r" id="q1">🔴 تسجيل دين</button><button class="btn gr" id="q2">🟢 استلام دفعة</button>
   <button class="btn" id="q3">🧾 فاتورة بيع</button><button class="btn o" id="q4">💸 مصروف</button>
   <button class="btn o" id="q5">👤 عميل جديد</button><button class="btn o" id="q6">📥 فاتورة شراء</button></div>`);
-  $('#q1').onclick=()=>pickCustomer('debt');$('#q2').onclick=()=>pickCustomer('payment');
-  $('#q3').onclick=()=>{closeModal();go('sale-new')};$('#q4').onclick=()=>expenseForm();
-  $('#q5').onclick=()=>customerForm();$('#q6').onclick=()=>{closeModal();go('purchase-new')};
+  $('#q1').onclick = () => { closeModal(); pickCustomer('debt'); };
+  $('#q2').onclick = () => { closeModal(); pickCustomer('payment'); };
+  $('#q3').onclick = () => { closeModal(); go('sale-new'); };
+  $('#q4').onclick = () => { closeModal(); expenseForm(); };
+  $('#q5').onclick = () => { closeModal(); customerForm(); };
+  $('#q6').onclick = () => { closeModal(); go('purchase-new'); };
 }
-function pickCustomer(type){if(off())return;
-  modal(`<h2>${type==='debt'?'على من تسجّل الدين؟':'ممّن استلمت الدفعة؟'}</h2><input id="ps" placeholder="🔎 ابحث بالاسم أو الهاتف" autofocus><div id="pl"></div>`);
-  const draw=()=>{const q=$('#ps').value.toLowerCase();
-    const l=S.customers.filter(c=>!q||c.name.toLowerCase().includes(q)||(c.phone||'').includes(q)).sort((a,b)=>(b.balance||0)-(a.balance||0)).slice(0,30);
-    $('#pl').innerHTML=l.map(c=>rowH('#2f6fd0',c.name,esc(c.phone||'—'),fmt(c.balance||0),(c.balance||0)>0?'due':'ok',c.id)).join('')||'<p class="hint">لا يوجد عميل — أضفه أولاً</p>';
-    $('#pl').querySelectorAll('[data-id]').forEach(e=>e.onclick=()=>amountForm(type,S.customers.find(c=>c.id===e.dataset.id),'customer'))};
-  $('#ps').oninput=draw;draw();
-}
-
-/* ===== مكوّنات العرض ===== */
-const rowH=(col,t,s,v,vc,id,x='')=>`<div class="item" data-id="${id}"><div class="row" style="gap:11px"><div class="av" style="background:${col}22;color:${col}">${esc(initials(t))}</div><div><b>${esc(t)}</b><br><small>${s}</small></div></div><div style="text-align:left"><b class="${vc}">${v}</b>${x}</div></div>`;
-function txRow(l){const i=l.dir==='in';return `<div class="tx"><div><b style="font-size:.86rem">${esc(l.label||l.type)}</b><br><small>${dt(l.ts)}${l.note?' · '+esc(l.note):''}</small></div><b class="${i?'ok':'due'}">${i?'+':'-'}${n2(l.amount)}</b></div>`}
-function listPage(o){
-  A.innerHTML=`<div class="top"><h1>${o.title}</h1>${o.add?`<button class="btn am sm" id="add">${o.add}</button>`:''}</div>${o.head||''}
-  ${o.chips?`<div class="chips">${o.chips.map(([v,l])=>`<div class="chip ${o.cur===v?'on':''}" data-c="${v}">${l}</div>`).join('')}</div>`:''}
-  <input id="sr" placeholder="🔎 بحث" value="${esc(S.q)}"><div class="card" id="lst"></div>`;
-  const draw=()=>{$('#lst').innerHTML=o.rows(S.q.toLowerCase())||'<p class="hint">لا توجد نتائج</p>';$('#lst').querySelectorAll('[data-id]').forEach(e=>e.onclick=()=>o.click(e.dataset.id))};
-  if($('#add'))$('#add').onclick=o.onAdd;
-  A.querySelectorAll('[data-c]').forEach(e=>e.onclick=()=>o.onChip(e.dataset.c));
-  $('#sr').oninput=e=>{S.q=e.target.value;draw()};draw();
+function pickCustomer(type) {
+  modal(`<h2>${type === 'debt' ? 'على من تسجّل الدين؟' : 'ممّن استلمت الدفعة؟'}</h2><input id="ps" placeholder="🔎 ابحث بالاسم أو الهاتف" autofocus><div id="pl"></div>`);
+  const draw = () => {
+    const q = $('#ps').value.toLowerCase();
+    const l = S.customers.filter(c => !q || c.name.toLowerCase().includes(q) || (c.phone || '').includes(q))
+      .sort((a, b) => (b.balance || 0) - (a.balance || 0)).slice(0, 30);
+    $('#pl').innerHTML = l.map(c => rowH('#2f6fd0', c.name, esc(c.phone || '—'), fmt(c.balance || 0), (c.balance || 0) > 0 ? 'due' : 'ok', c.id)).join('') || '<p class="hint">لا يوجد عميل — أضفه أولاً</p>';
+    $('#pl').querySelectorAll('[data-id]').forEach(e => e.onclick = () => { closeModal(true); amountForm(type, S.customers.find(c => c.id === e.dataset.id), 'customer'); });
+  };
+  $('#ps').oninput = draw; draw();
 }
 
-/* ===== تسجيل الدخول ===== */
-function authErr(e){const m={'auth/invalid-email':'البريد غير صحيح','auth/user-not-found':'لا يوجد حساب بهذا البريد','auth/wrong-password':'كلمة المرور غير صحيحة','auth/invalid-credential':'البريد أو كلمة المرور غير صحيحة','auth/email-already-in-use':'البريد مستخدم مسبقاً','auth/weak-password':'كلمة المرور قصيرة (6 أحرف على الأقل)','auth/too-many-requests':'محاولات كثيرة، حاول لاحقاً','auth/network-request-failed':'تعذّر الاتصال','auth/popup-closed-by-user':'أُغلقت نافذة الدخول','auth/popup-blocked':'المتصفح منع النافذة','auth/missing-name':'اكتب اسمك الكامل'};return m[e?.code]||('خطأ: '+(e?.code||''))}
-function loginView(){
-  N.innerHTML='';const reg=S._authTab==='register';
-  A.innerHTML=`<div style="text-align:center;padding:44px 0 12px"><img class="lg" src="icon-192.png" alt=""><h1>الكامل سوفت</h1><small>حساباتك وديونك في جيبك</small></div>
-  <div class="card"><div class="row" style="margin-bottom:10px"><button class="btn ${reg?'g':''} w" id="tl">دخول</button><button class="btn ${reg?'':'g'} w" id="tr">حساب جديد</button></div>
-  ${reg?'<label>الاسم الكامل</label><input id="a-name">':''}
-  <label>البريد الإلكتروني</label><input id="a-email" type="email" autocomplete="email">
-  <label>كلمة المرور</label><input id="a-pass" type="password" autocomplete="current-password">
-  <button class="btn am w" id="a-go" style="margin-top:12px">${reg?'إنشاء الحساب':'تسجيل الدخول'}</button>
-  ${reg?'':'<div style="text-align:center;margin-top:10px"><a id="a-forgot" style="font-size:.82rem;cursor:pointer">نسيت كلمة المرور؟</a></div>'}
-  <div class="hint">أو</div><button class="btn o w" id="g">المتابعة بحساب جوجل</button></div>`;
-  $('#tl').onclick=()=>{S._authTab='login';loginView()};$('#tr').onclick=()=>{S._authTab='register';loginView()};
-  $('#a-go').onclick=async()=>{
-    const email=$('#a-email').value.trim(),pass=$('#a-pass').value;if(!email||!pass)return toast('أدخل البريد وكلمة المرور');
-    $('#a-go').disabled=true;
-    try{await setPersistence(auth,browserLocalPersistence);
-      if(reg){const name=$('#a-name').value.trim();if(!name)throw{code:'auth/missing-name'};
-        const cr=await createUserWithEmailAndPassword(auth,email,pass);
-        await setDoc(doc(db,'settings',cr.user.uid),{name,currency:'ر.ي',phone:'',address:'',autoWhatsApp:true},{merge:true});toast('تم إنشاء الحساب')}
-      else{await signInWithEmailAndPassword(auth,email,pass);toast('مرحباً بك')}
-    }catch(e){$('#a-go').disabled=false;toast(authErr(e))}};
-  $('#a-pass').addEventListener('keydown',e=>{if(e.key==='Enter')$('#a-go').click()});
-  if($('#a-forgot'))$('#a-forgot').onclick=async()=>{const em=$('#a-email').value.trim();if(!em)return toast('اكتب بريدك أولاً');try{await sendPasswordResetEmail(auth,em);toast('تم إرسال رابط الاستعادة')}catch(e){toast(authErr(e))}};
-  $('#g').onclick=async()=>{try{await setPersistence(auth,browserLocalPersistence);await signInWithPopup(auth,new GoogleAuthProvider())}catch(e){toast(authErr(e))}};
-}
-const logout=async()=>{if(!confirm('هل تريد تسجيل الخروج؟'))return;try{await signOut(auth);toast('تم تسجيل الخروج')}catch(e){toast('تعذّر تسجيل الخروج')}};
-
-/* ===== الرئيسية ===== */
-function dash(){
-  const cash=sum(S.ledger,l=>l.cash),recv=sum(S.customers,c=>pos(c.balance)),pay=sum(S.suppliers,s=>pos(s.balance));
-  const inv=sum(S.products,p=>(p.stock||0)*(p.cost||0)),adv=sum(S.employees,e=>pos(e.balance));
-  const t0=startDay(Date.now()),tS=sum(S.sales.filter(s=>s.ts>=t0),s=>s.total),tE=sum(S.expenses.filter(e=>e.ts>=t0),e=>e.amount);
-  const tP=sum(S.ledger.filter(l=>l.ts>=t0&&l.type==='payment'&&l.dir==='in'),l=>l.amount);
-  const top=S.customers.filter(c=>(c.balance||0)>0).sort((a,b)=>b.balance-a.balance).slice(0,3);
-  const low=S.products.filter(p=>(p.stock||0)<=(p.min||0));
-  const h=new Date().getHours();
-  A.innerHTML=`<div class="top"><div><small>${h<12?'صباح الخير ☀️':'مساء الخير 🌙'}</small><h1>${esc(S.settings.name)}</h1></div>
+/* ============================================================
+   13) الرئيسية
+   ============================================================ */
+function dash() {
+  const cash = sum(S.ledger, l => l.cash), recv = sum(S.customers, c => pos(c.balance)), pay = sum(S.suppliers, s => pos(s.balance));
+  const inv = sum(S.products, p => (p.stock || 0) * (p.cost || 0)), adv = sum(S.employees, e => pos(e.balance));
+  const t0 = startDay(Date.now()), tS = sum(S.sales.filter(s => s.ts >= t0), s => s.total), tE = sum(S.expenses.filter(e => e.ts >= t0), e => e.amount);
+  const tP = sum(S.ledger.filter(l => l.ts >= t0 && l.type === 'payment' && l.dir === 'in'), l => l.amount);
+  const top = S.customers.filter(c => (c.balance || 0) > 0).sort((a, b) => b.balance - a.balance).slice(0, 3);
+  const low = S.products.filter(p => (p.stock || 0) <= (p.min || 0));
+  const h = new Date().getHours();
+  const pending = Cloud.queue.length;
+  A.innerHTML = `<div class="top"><div><small>${h < 12 ? 'صباح الخير ☀️' : 'مساء الخير 🌙'}</small><h1>${esc(S.settings.name)}</h1></div>
   <div><span class="ic" id="th">🌓</span><span class="ic" id="lg">📒</span></div></div>
+  ${pending ? `<div class="card" style="background:#fff8e6;border-color:#f0c674"><small>⏳ ${pending} عملية في انتظار المزامنة — ستُرفع تلقائياً عند توفر الإنترنت</small></div>` : ''}
   <div class="hero"><small>المستحق لك عند العملاء</small><div class="big">${fmt(recv)}</div>
   <div class="g3"><div class="mini"><small>الصندوق</small><b>${n2(cash)}</b></div><div class="mini"><small>مبيعات اليوم</small><b>${n2(tS)}</b></div><div class="mini"><small>دفعات اليوم</small><b>${n2(tP)}</b></div></div></div>
   <div class="g4"><div class="act" data-q="debt"><i>🔴</i>دين</div><div class="act" data-q="payment"><i>🟢</i>دفعة</div><div class="act" data-q="sale"><i>🧾</i>بيع</div><div class="act" data-q="exp"><i>💸</i>مصروف</div></div>
-  ${top.length?`<div class="sec">أعلى المديونين <small>اضغط للتذكير</small></div><div class="card">${top.map(c=>rowH('#e5484d',c.name,esc(c.phone||'—'),fmt(c.balance),'due',c.id,`<br><a class="btn g sm" data-rm="${c.id}" style="margin-top:4px">📱 تذكير</a>`)).join('')}</div>`:''}
-  ${low.length?`<div class="card row" style="cursor:pointer" id="lowc"><div><b class="warn">⚠️ ${low.length} منتج قارب على النفاد</b><br><small>${esc(low.slice(0,3).map(p=>p.name).join('، '))}</small></div><span>‹</span></div>`:''}
+  ${top.length ? `<div class="sec">أعلى المديونين <small>اضغط للتذكير</small></div><div class="card">${top.map(c => rowH('#e5484d', c.name, esc(c.phone || '—'), fmt(c.balance), 'due', c.id, `<br><a class="btn g sm" data-rm="${c.id}" style="margin-top:4px">📱 تذكير</a>`)).join('')}</div>` : ''}
+  ${low.length ? `<div class="card row" style="cursor:pointer" id="lowc"><div><b class="warn">⚠️ ${low.length} منتج قارب على النفاد</b><br><small>${esc(low.slice(0, 3).map(p => p.name).join('، '))}</small></div><span>‹</span></div>` : ''}
   <div class="g2"><div class="stat"><div class="l">مستحق للموردين</div><div class="n warn">${fmt(pay)}</div></div><div class="stat"><div class="l">قيمة المخزون</div><div class="n blue">${fmt(inv)}</div></div>
   <div class="stat"><div class="l">سحبيات الموظفين</div><div class="n purple">${fmt(adv)}</div></div><div class="stat"><div class="l">مصروفات اليوم</div><div class="n due">${fmt(tE)}</div></div></div>
-  <div class="sec">آخر الحركات <a class="btn g sm" id="lg2">الكل</a></div><div class="card">${S.ledger.slice(0,6).map(txRow).join('')||'<p class="hint">لا توجد حركات بعد — اضغط + للبدء</p>'}</div>`;
-  $('#th').onclick=()=>{const d=document.documentElement.dataset.theme==='dark'?'':'dark';document.documentElement.dataset.theme=d;try{localStorage.th=d}catch(e){}};
-  $('#lg').onclick=$('#lg2').onclick=()=>go('ledger');
-  if($('#lowc'))$('#lowc').onclick=()=>go('products');
-  A.querySelectorAll('[data-q]').forEach(e=>e.onclick=()=>{const q=e.dataset.q;q==='debt'||q==='payment'?pickCustomer(q):q==='sale'?go('sale-new'):expenseForm()});
-  A.querySelectorAll('.item[data-id]').forEach(e=>e.onclick=()=>go('customer',e.dataset.id));
-  A.querySelectorAll('[data-rm]').forEach(b=>b.onclick=e=>{e.stopPropagation();remind(S.customers.find(c=>c.id===b.dataset.rm))});
-}
-function moreView(){
-  const it=[['suppliers','🚚','الموردين'],['products','📦','المخزون'],['purchases','📥','المشتريات'],['expenses','💸','المصروفات'],['employees','👷','الموظفين'],['reports','📊','التقارير'],['ledger','📒','دفتر اليومية'],['settings','⚙️','الإعدادات']];
-  A.innerHTML=`<div class="top"><h1>المزيد</h1></div><div class="g3" style="margin-top:8px">${it.map(([v,i,l])=>`<div class="act" data-go="${v}" style="padding:18px 4px"><i>${i}</i>${l}</div>`).join('')}</div>
-  <button class="btn o w" id="out" style="margin-top:18px">تسجيل الخروج</button>`;
-  A.querySelectorAll('[data-go]').forEach(e=>e.onclick=()=>go(e.dataset.go));$('#out').onclick=logout;
+  <div class="sec">آخر الحركات <a class="btn g sm" id="lg2">الكل</a></div><div class="card">${S.ledger.slice(0, 6).map(txRow).join('') || '<p class="hint">لا توجد حركات بعد — اضغط + للبدء</p>'}</div>`;
+  $('#th').onclick = () => { const d = document.documentElement.dataset.theme === 'dark' ? '' : 'dark'; document.documentElement.dataset.theme = d; try { localStorage.th = d; } catch {} };
+  $('#lg').onclick = $('#lg2').onclick = () => go('ledger');
+  if ($('#lowc')) $('#lowc').onclick = () => go('products');
+  A.querySelectorAll('[data-q]').forEach(e => e.onclick = () => { const q = e.dataset.q; q === 'debt' || q === 'payment' ? pickCustomer(q) : q === 'sale' ? go('sale-new') : expenseForm(); });
+  A.querySelectorAll('.item[data-id]').forEach(e => e.onclick = () => go('customer', e.dataset.id));
+  A.querySelectorAll('[data-rm]').forEach(b => b.onclick = e => { e.stopPropagation(); remind(S.customers.find(c => c.id === b.dataset.rm)); });
 }
 
-/* ===== العملاء ===== */
-function customersList(){
-  const f=S.cf,tot=sum(S.customers,c=>pos(c.balance)),n=S.customers.filter(c=>(c.balance||0)>0).length;
-  listPage({title:'العملاء',add:'+ عميل',onAdd:()=>customerForm(),cur:f,
-    chips:[['all','الكل'],['debt','عليهم دين'],['clear','مسدد'],['over','تجاوز السقف']],onChip:v=>{S.cf=v;customersList()},
-    head:`<div class="card row"><div><small>إجمالي الديون</small><div class="big due">${fmt(tot)}</div></div><small>${n} من ${S.customers.length} عميل<br>عليهم دين</small></div>`,
-    rows:q=>S.customers.filter(c=>(!q||c.name.toLowerCase().includes(q)||(c.phone||'').includes(q))&&(f==='all'||(f==='debt'&&c.balance>0)||(f==='clear'&&!(c.balance>0))||(f==='over'&&c.limit>0&&c.balance>c.limit)))
-      .sort((a,b)=>(b.balance||0)-(a.balance||0)).map(c=>{const lim=c.limit>0?Math.min(100,(c.balance||0)/c.limit*100):0;
-      return rowH('#2f6fd0',c.name,esc(c.phone||'—'),fmt(c.balance||0),(c.balance||0)>0?'due':'ok',c.id,c.limit>0?`<div class="bar"><i style="width:${lim}%;background:${lim>=100?'var(--red)':lim>70?'var(--org)':'var(--grn)'}"></i></div>`:'')}).join(''),
-    click:id=>go('customer',id)});
+/* ============================================================
+   14) المزيد + الإعدادات
+   ============================================================ */
+function moreView() {
+  const it = [['suppliers','🚚','الموردين'],['products','📦','المخزون'],['purchases','📥','المشتريات'],['expenses','💸','المصروفات'],['employees','👷','الموظفين'],['reports','📊','التقارير'],['ledger','📒','دفتر اليومية'],['settings','⚙️','الإعدادات']];
+  const cloud = window._user ? `<span class="badge sync">☁️ متصل</span>` : `<span class="badge local">📱 محلي فقط</span>`;
+  A.innerHTML = `<div class="top"><h1>المزيد</h1>${cloud}</div><div class="g3" style="margin-top:8px">${it.map(([v, i, l]) => `<div class="act" data-go="${v}" style="padding:18px 4px"><i>${i}</i>${l}</div>`).join('')}</div>
+  ${window._user ? `<button class="btn o w" id="out" style="margin-top:18px">تسجيل الخروج (يبقى كامل بياناتك على الهاتف)</button>` : `<button class="btn am w" id="login" style="margin-top:18px">🔐 تفعيل المزامنة السحابية</button>`}`;
+  A.querySelectorAll('[data-go]').forEach(e => e.onclick = () => { Nav.push(e.dataset.go, null); S.view = e.dataset.go; render(); });
+  if ($('#out')) $('#out').onclick = logout;
+  if ($('#login')) $('#login').onclick = () => { S.view = 'login'; render(); };
 }
-function customerForm(c){if(off())return;
-  const e=!!c;
-  modal(`<h2>${e?'تعديل عميل':'عميل جديد'}</h2><label>الاسم *</label><input id="n" value="${esc(c?.name||'')}">
-  <label>الهاتف (لإشعار واتساب)</label><input id="ph" type="tel" value="${esc(c?.phone||'')}" placeholder="7771234567">
-  <label>سقف الدين (اختياري)</label><input id="lm" type="number" value="${c?.limit||''}" placeholder="بدون سقف">
-  ${e?'':`<label>رصيد افتتاحي (دين سابق)</label><input id="op" type="number" placeholder="0">`}${btns()}`);
-  $('#sv').onclick=async()=>{if(off())return;
-    const name=$('#n').value.trim();if(!name)return toast('اكتب الاسم');
-    const d={name,phone:$('#ph').value.trim(),limit:Number($('#lm').value)||0};
-    if(e)await updateDoc(doc(db,'accounts',c.id),d);
-    else{const t=newToken(),op=Number($('#op').value)||0,bt=writeBatch(db);
-      bt.set(doc(db,'accounts',t),{owner:S.user.uid,...d,balance:op,currency:S.settings.currency,createdAt:Date.now()});
-      if(op>0)bt.set(newLedgerRef(),ledgerData('debt','رصيد افتتاحي',op,'out',0,{accountId:t}));await bt.commit()}
-    closeModal();toast('تم الحفظ');};
+function settingsView() {
+  const q = Cloud.queue.length;
+  A.innerHTML = `<div class="top"><h1>الإعدادات</h1></div>
+  <div class="card"><label>اسم المنشأة</label><input id="nm" value="${esc(S.settings.name)}"><label>العملة</label><input id="cu" value="${esc(S.settings.currency)}">
+  <label>الهاتف</label><input id="ph" value="${esc(S.settings.phone || '')}"><label>العنوان</label><input id="ad" value="${esc(S.settings.address || '')}">
+  <label class="row" style="margin-top:12px;color:var(--t)"><span><b>إشعار واتساب تلقائي</b><br><small>عند تسجيل دين أو دفعة</small></span><input type="checkbox" id="wa" style="width:22px;height:22px" ${S.settings.autoWhatsApp ? 'checked' : ''}></label>
+  <button class="btn am w" id="sv" style="margin-top:10px">حفظ الإعدادات</button></div>
+  <div class="card"><b>💾 النسخ الاحتياطي</b><br><small>يُنصح بعمل نسخة كل أسبوع</small>
+  <button class="btn o w" id="bk" style="margin-top:10px">تصدير نسخة (JSON)</button>
+  <label>استيراد نسخة</label><input type="file" id="rst" accept=".json">
+  <div style="color:var(--red);font-size:.78rem;margin-top:6px">⚠️ الاستيراد يستبدل كل البيانات الحالية</div></div>
+  <div class="card"><b>حالة المزامنة</b><br><small>${window._user ? 'مسجّل دخول — تتم المزامنة تلقائياً' : 'وضع محلي — لا يتم رفع أي بيانات'}</small>
+  ${q ? `<br><small class="warn">⏳ ${q} عملية في الانتظار</small><button class="btn o w" id="sy" style="margin-top:8px">↻ حاول المزامنة الآن</button>` : ''}</div>
+  <div class="card"><b>معلومات</b><br><small>الإصدار 2.0 · تخزين محلي IndexedDB</small></div>`;
+  $('#sv').onclick = async () => {
+    S.settings = { ...S.settings, name: $('#nm').value.trim() || 'الكامل سوفت', currency: $('#cu').value.trim() || 'ر.ي', phone: $('#ph').value.trim(), address: $('#ad').value.trim(), autoWhatsApp: $('#wa').checked };
+    try { localStorage.st = JSON.stringify(S.settings); } catch {}
+    toast('تم الحفظ'); render();
+  };
+  $('#bk').onclick = () => {
+    const d = { settings: S.settings, customers: S.customers, suppliers: S.suppliers, products: S.products, sales: S.sales, purchases: S.purchases, expenses: S.expenses, ledger: S.ledger, employees: S.employees };
+    const a = document.createElement('a'); a.href = URL.createObjectURL(new Blob([JSON.stringify(d, null, 2)], { type: 'application/json' })); a.download = 'backup-' + Date.now() + '.json'; a.click();
+  };
+  $('#rst').onchange = async e => {
+    const f = e.target.files[0]; if (!f) return;
+    if (!confirm('سيتم استبدال كل البيانات. متابعة؟')) return;
+    try {
+      const t = await f.text(), d = JSON.parse(t);
+      await LDB.clear();
+      const ops = [];
+      if (d.customers) ops.push({ s: 'accounts', put: d.customers });
+      if (d.suppliers) ops.push({ s: 'suppliers', put: d.suppliers });
+      if (d.products) ops.push({ s: 'products', put: d.products });
+      if (d.sales) ops.push({ s: 'sales', put: d.sales });
+      if (d.purchases) ops.push({ s: 'purchases', put: d.purchases });
+      if (d.expenses) ops.push({ s: 'expenses', put: d.expenses });
+      if (d.ledger) ops.push({ s: 'ledger', put: d.ledger });
+      if (d.employees) ops.push({ s: 'employees', put: d.employees });
+      await LDB.bulk(ops);
+      if (d.settings) { S.settings = { ...S.settings, ...d.settings }; localStorage.st = JSON.stringify(S.settings); }
+      await loadAll(); toast('✅ تم الاستيراد'); render();
+    } catch (e) { toast('فشل الاستيراد: ' + e.message); }
+  };
+  if ($('#sy')) $('#sy').onclick = () => { Cloud.flush(); toast('جارٍ المحاولة...'); };
 }
-function suppliersList(){
-  listPage({title:'الموردين',add:'+ مورد',onAdd:()=>supplierForm(),
-    head:`<div class="card"><small>إجمالي المستحق</small><div class="big warn">${fmt(sum(S.suppliers,s=>pos(s.balance)))}</div></div>`,
-    rows:q=>S.suppliers.filter(s=>!q||s.name.toLowerCase().includes(q)||(s.phone||'').includes(q)).sort((a,b)=>(b.balance||0)-(a.balance||0))
-      .map(s=>rowH('#e8862b',s.name,esc(s.phone||'—'),fmt(s.balance||0),(s.balance||0)>0?'warn':'ok',s.id)).join(''),click:id=>go('supplier',id)});
+
+/* ============================================================
+   15) العملاء
+   ============================================================ */
+function customersList() {
+  const f = S.cf, tot = sum(S.customers, c => pos(c.balance)), n = S.customers.filter(c => (c.balance || 0) > 0).length;
+  listPage({
+    title: 'العملاء', add: '+ عميل', onAdd: () => customerForm(), cur: f,
+    chips: [['all','الكل'],['debt','عليهم دين'],['clear','مسدد'],['over','تجاوز السقف']],
+    onChip: v => { S.cf = v; customersList(); },
+    head: `<div class="card row"><div><small>إجمالي الديون</small><div class="big due">${fmt(tot)}</div></div><small>${n} من ${S.customers.length} عميل<br>عليهم دين</small></div>`,
+    rows: q => S.customers.filter(c => (!q || c.name.toLowerCase().includes(q) || (c.phone || '').includes(q)) && (f === 'all' || (f === 'debt' && c.balance > 0) || (f === 'clear' && !(c.balance > 0)) || (f === 'over' && c.limit > 0 && c.balance > c.limit)))
+      .sort((a, b) => (b.balance || 0) - (a.balance || 0)).map(c => {
+        const lim = c.limit > 0 ? Math.min(100, (c.balance || 0) / c.limit * 100) : 0;
+        return rowH('#2f6fd0', c.name, esc(c.phone || '—'), fmt(c.balance || 0), (c.balance || 0) > 0 ? 'due' : 'ok', c.id,
+          c.limit > 0 ? `<div class="bar"><i style="width:${lim}%;background:${lim >= 100 ? 'var(--red)' : lim > 70 ? 'var(--org)' : 'var(--grn)'}"></i></div>` : '');
+      }).join(''),
+    click: id => go('customer', id)
+  });
 }
-function supplierForm(s){if(off())return;
-  const e=!!s;
-  modal(`<h2>${e?'تعديل مورد':'مورد جديد'}</h2><label>الاسم *</label><input id="n" value="${esc(s?.name||'')}"><label>الهاتف</label><input id="ph" type="tel" value="${esc(s?.phone||'')}">
-  ${e?'':`<label>رصيد افتتاحي</label><input id="op" type="number" placeholder="0">`}${btns()}`);
-  $('#sv').onclick=async()=>{if(off())return;
-    const name=$('#n').value.trim();if(!name)return toast('اكتب الاسم');
-    if(e)await updateDoc(doc(db,'suppliers',s.id),{name,phone:$('#ph').value.trim()});
-    else{const op=Number($('#op').value)||0,t=newToken(),bt=writeBatch(db);
-      bt.set(doc(db,'suppliers',t),{owner:S.user.uid,name,phone:$('#ph').value.trim(),balance:op,createdAt:Date.now()});
-      if(op>0)bt.set(newLedgerRef(),ledgerData('purchase','رصيد افتتاحي مورد',op,'out',0,{supplierId:t}));await bt.commit()}
-    closeModal();toast('تم الحفظ');};
+function customerForm(c) {
+  const e = !!c;
+  modal(`<h2>${e ? 'تعديل عميل' : 'عميل جديد'}</h2><label>الاسم *</label><input id="n" value="${esc(c?.name || '')}">
+  <label>الهاتف (لإشعار واتساب)</label><input id="ph" type="tel" value="${esc(c?.phone || '')}" placeholder="7771234567">
+  <label>سقف الدين (اختياري)</label><input id="lm" type="number" value="${c?.limit || ''}" placeholder="بدون سقف">
+  ${e ? '' : `<label>رصيد افتتاحي (دين سابق)</label><input id="op" type="number" placeholder="0">`}${btns()}`);
+  $('#sv').onclick = async () => {
+    const name = $('#n').value.trim(); if (!name) return toast('اكتب الاسم');
+    const d = { name, phone: $('#ph').value.trim(), limit: Number($('#lm').value) || 0 };
+    if (e) { d.id = c.id; d.balance = c.balance; await dbSave('accounts', d); }
+    else {
+      const op = Number($('#op').value) || 0;
+      const acc = { id: newToken(), name, phone: d.phone, limit: d.limit, balance: op, currency: S.settings.currency, createdAt: Date.now() };
+      const ops = [{ s: 'accounts', put: acc }];
+      if (op > 0) ops.push({ s: 'ledger', put: ledgerData('debt', 'رصيد افتتاحي', op, 'out', 0, { accountId: acc.id }) });
+      await LDB.bulk(ops);
+      await loadAll();
+      if (S.user && !S.user.isAnonymous) {
+        Cloud.push('accounts', acc.id, acc);
+        if (op > 0) Cloud.push('ledger', ops[1].put.id, ops[1].put);
+      }
+    }
+    closeModal(true); toast('تم الحفظ'); render();
+  };
 }
-/* صفحة العميل/المورد */
-function partyPage(kind){
-  const cu=kind==='customer',id=cu?S.customerId:S.supplierId,e=(cu?S.customers:S.suppliers).find(x=>x.id===id);
-  if(!e)return go(cu?'customers':'suppliers');
-  const txs=S.ledger.filter(l=>l[cu?'accountId':'supplierId']===id).sort((a,b)=>b.ts-a.ts),b=e.balance||0,L=link(id);
-  const col=cu?'#2f6fd0':'#e8862b';
-  A.innerHTML=`<div class="top"><button class="btn g sm" id="bk">→ رجوع</button><button class="btn g sm" id="ed">تعديل</button></div>
+
+/* ============================================================
+   16) الموردين
+   ============================================================ */
+function suppliersList() {
+  listPage({
+    title: 'الموردين', add: '+ مورد', onAdd: () => supplierForm(),
+    head: `<div class="card"><small>إجمالي المستحق</small><div class="big warn">${fmt(sum(S.suppliers, s => pos(s.balance)))}</div></div>`,
+    rows: q => S.suppliers.filter(s => !q || s.name.toLowerCase().includes(q) || (s.phone || '').includes(q))
+      .sort((a, b) => (b.balance || 0) - (a.balance || 0))
+      .map(s => rowH('#e8862b', s.name, esc(s.phone || '—'), fmt(s.balance || 0), (s.balance || 0) > 0 ? 'warn' : 'ok', s.id)).join(''),
+    click: id => go('supplier', id)
+  });
+}
+function supplierForm(s) {
+  const e = !!s;
+  modal(`<h2>${e ? 'تعديل مورد' : 'مورد جديد'}</h2><label>الاسم *</label><input id="n" value="${esc(s?.name || '')}"><label>الهاتف</label><input id="ph" type="tel" value="${esc(s?.phone || '')}">
+  ${e ? '' : `<label>رصيد افتتاحي</label><input id="op" type="number" placeholder="0">`}${btns()}`);
+  $('#sv').onclick = async () => {
+    const name = $('#n').value.trim(); if (!name) return toast('اكتب الاسم');
+    if (e) { await dbSave('suppliers', { ...s, name, phone: $('#ph').value.trim() }); }
+    else {
+      const op = Number($('#op').value) || 0;
+      const sup = { id: newToken(), name, phone: $('#ph').value.trim(), balance: op, createdAt: Date.now() };
+      const ops = [{ s: 'suppliers', put: sup }];
+      if (op > 0) ops.push({ s: 'ledger', put: ledgerData('purchase', 'رصيد افتتاحي مورد', op, 'out', 0, { supplierId: sup.id }) });
+      await LDB.bulk(ops); await loadAll();
+      if (S.user && !S.user.isAnonymous) { Cloud.push('suppliers', sup.id, sup); if (op > 0) Cloud.push('ledger', ops[1].put.id, ops[1].put); }
+    }
+    closeModal(true); toast('تم الحفظ'); render();
+  };
+}
+
+/* ============================================================
+   17) صفحة العميل/المورد
+   ============================================================ */
+function partyPage(kind) {
+  const cu = kind === 'customer', id = cu ? S.customerId : S.supplierId;
+  const e = (cu ? S.customers : S.suppliers).find(x => x.id === id);
+  if (!e) return go(cu ? 'customers' : 'suppliers');
+  const txs = S.ledger.filter(l => l[cu ? 'accountId' : 'supplierId'] === id).sort((a, b) => b.ts - a.ts);
+  const b = e.balance || 0;
+  A.innerHTML = `<div class="top"><button class="btn g sm" id="bk">→ رجوع</button><button class="btn g sm" id="ed">تعديل</button></div>
   <div class="hero" style="text-align:center"><div class="av" style="margin:0 auto 6px;width:56px;height:56px;background:rgba(255,255,255,.12);color:#fff">${esc(initials(e.name))}</div>
-  <h2>${esc(e.name)}</h2><small>${esc(e.phone||'')}</small><div class="big" style="margin-top:6px">${fmt(b)}</div>
-  <small>${cu?(b>0?'مديونية على العميل':b<0?'رصيد للعميل':'الحساب مسدد'):'مستحق للمورد'}</small>
-  ${cu&&e.limit>0?`<div style="margin-top:8px;font-size:.78rem;color:#b9cadb">سقف الدين ${n2(e.limit)} — ${b>e.limit?'<b style="color:#ff8a8a">تجاوز السقف</b>':'المتاح '+n2(e.limit-b)}</div>`:''}</div>
-  <div class="g2"><button class="btn r" id="db">${cu?'+ دين':'+ مشتريات'}</button><button class="btn gr" id="pay">+ دفعة</button></div>
-  ${cu?`<div class="g3" style="margin-top:8px"><button class="btn o sm" id="rm">📱 تذكير</button><button class="btn o sm" id="cp">🔗 نسخ الرابط</button><button class="btn o sm" id="pd">📄 PDF</button></div>
-  <div class="card" style="text-align:center"><small>QR كشف الحساب للعميل</small><div id="qr" style="margin:10px auto;width:150px;background:#fff;padding:6px;border-radius:10px"></div></div>`:`<button class="btn o w sm" id="pd" style="margin-top:8px">📄 كشف PDF</button>`}
-  <div class="sec">الحركات (${txs.length})</div><div class="card">${txs.map(txRow).join('')||'<p class="hint">لا توجد حركات</p>'}</div>`;
-  $('#bk').onclick=()=>go(cu?'customers':'suppliers');$('#ed').onclick=()=>cu?customerForm(e):supplierForm(e);
-  $('#db').onclick=()=>cu?amountForm('debt',e,'customer'):go('purchase-new');$('#pay').onclick=()=>amountForm('payment',e,kind);
-  $('#pd').onclick=()=>statementPDF(e,txs,kind);
-  if(cu){need('qr').then(()=>new QRCode($('#qr'),{text:L,width:138,height:138})).catch(()=>{});$('#rm').onclick=()=>remind(e);$('#cp').onclick=()=>navigator.clipboard.writeText(L).then(()=>toast('تم نسخ الرابط'))}
-  if(!cu)S.supplierId=id;
+  <h2>${esc(e.name)}</h2><small>${esc(e.phone || '')}</small><div class="big" style="margin-top:6px">${fmt(b)}</div>
+  <small>${cu ? (b > 0 ? 'مديونية على العميل' : b < 0 ? 'رصيد للعميل' : 'الحساب مسدد') : 'مستحق للمورد'}</small>
+  ${cu && e.limit > 0 ? `<div style="margin-top:8px;font-size:.78rem;color:#b9cadb">سقف الدين ${n2(e.limit)} — ${b > e.limit ? '<b style="color:#ff8a8a">تجاوز السقف</b>' : 'المتاح ' + n2(e.limit - b)}</div>` : ''}</div>
+  <div class="g2"><button class="btn r" id="db">${cu ? '+ دين' : '+ مشتريات'}</button><button class="btn gr" id="pay">+ دفعة</button></div>
+  ${cu ? `<div class="g3" style="margin-top:8px"><button class="btn o sm" id="rm">📱 تذكير</button><button class="btn o sm" id="cp">🔗 نسخ الرابط</button><button class="btn o sm" id="pd">📄 PDF</button></div>
+  <div class="card" style="text-align:center"><small>QR كشف الحساب</small><div id="qr" style="margin:10px auto;width:150px;background:#fff;padding:6px;border-radius:10px"></div></div>`
+    : `<button class="btn o w sm" id="pd" style="margin-top:8px">📄 كشف PDF</button>`}
+  <div class="sec">الحركات (${txs.length})</div><div class="card">${txs.map(txRow).join('') || '<p class="hint">لا توجد حركات</p>'}</div>`;
+  $('#bk').onclick = () => history.back();
+  $('#ed').onclick = () => cu ? customerForm(e) : supplierForm(e);
+  $('#db').onclick = () => cu ? amountForm('debt', e, 'customer') : go('purchase-new');
+  $('#pay').onclick = () => amountForm('payment', e, kind);
+  $('#pd').onclick = () => statementPDF(e, txs, kind);
+  if (cu) {
+    need('qr').then(() => new QRCode($('#qr'), { text: link(id), width: 138, height: 138 })).catch(() => {});
+    $('#rm').onclick = () => remind(e);
+    $('#cp').onclick = () => navigator.clipboard.writeText(link(id)).then(() => toast('تم نسخ الرابط'));
+  }
 }
 
-/* ====== تسجيل دين/دفعة — نفس منطق الإشعارات الأصلي ====== */
-function amountForm(type,ent,kind){if(off())return;
-  const isDebt=type==='debt',isCust=kind==='customer';
-  modal(`<h2>${isDebt?'تسجيل دين على':'تسجيل دفعة '+(isCust?'من':'إلى')} ${esc(ent.name)}</h2>
-  <small>الرصيد الحالي: ${fmt(ent.balance||0)}</small>
+/* ============================================================
+   18) نموذج المبلغ (دين/دفعة) — يعمل محلياً
+   ============================================================ */
+function amountForm(type, ent, kind) {
+  const isDebt = type === 'debt', isCust = kind === 'customer';
+  modal(`<h2>${isDebt ? 'تسجيل دين على' : 'تسجيل دفعة ' + (isCust ? 'من' : 'إلى')} ${esc(ent.name)}</h2>
+  <small>الرصيد الحالي: ${fmt(ent.balance || 0)}</small>
   <label>المبلغ</label><input id="am" type="number" inputmode="decimal" placeholder="0" autofocus>
-  ${!isDebt&&isCust&&ent.balance>0?`<button class="btn g sm" id="full" style="margin:4px 0">تسديد كامل (${n2(ent.balance)})</button>`:''}
+  ${!isDebt && isCust && ent.balance > 0 ? `<button class="btn g sm" id="full" style="margin:4px 0">تسديد كامل (${n2(ent.balance)})</button>` : ''}
   <label>ملاحظة</label><input id="nt" placeholder="اختياري"><div id="err" style="color:var(--red);font-size:.8rem;display:none"></div>${btns('تأكيد')}`);
-  if($('#full'))$('#full').onclick=()=>$('#am').value=ent.balance;
-  $('#sv').onclick=async()=>{if(off())return;
-    const amount=Number($('#am').value);if(!(amount>0))return toast('أدخل مبلغاً صحيحاً');
-    const oldB=Number(ent.balance)||0,newB=isDebt?oldB+amount:oldB-amount;
-    if(isDebt&&isCust&&ent.limit>0&&newB>ent.limit&&!confirm('هذا الدين يتجاوز سقف العميل ('+n2(ent.limit)+'). هل تريد المتابعة؟'))return;
-    const svBtn=$('#sv');svBtn.disabled=true;svBtn.textContent='جارٍ الحفظ...';$('#err').style.display='none';
-    try{
-      const col=isCust?'accounts':'suppliers',extra=isCust?{accountId:ent.id}:{supplierId:ent.id},bt=writeBatch(db);
-      bt.set(newLedgerRef(),ledgerData(isDebt?'debt':'payment',isDebt?'دين':'دفعة',amount,isDebt?'out':'in',isDebt?0:(isCust?amount:-amount),{...extra,note:$('#nt').value.trim()}));
-      bt.update(doc(db,col,ent.id),{balance:newB});await bt.commit();closeModal();toast('✅ تم التسجيل بنجاح');
-      const note=$('#nt').value.trim(),cur=S.settings.currency||'ر.ي',now=new Date();
-      let m=`مرحباً ${ent.name} 👋\n`+(isDebt?`🔴 تم تسجيل دين جديد بقيمة: ${amount} ${cur}\n`:`🟢 تم تسجيل دفعة بقيمة: ${amount} ${cur}\n`);
-      if(note)m+=`📝 ملاحظات: ${note}\n`;
-      m+=`📊 إجمالي حسابك الحالي: ${newB} ${cur}\n📅 التاريخ: ${now.toLocaleDateString('ar-EG')} - ${now.toLocaleTimeString('ar-EG',{hour:'2-digit',minute:'2-digit'})}\n\n`+(isDebt?'شكراً لثقتكم بنا 🌹':'شكراً لالتزامكم بالسداد 💚');
-      if(isCust&&window.notifyCustomer)window.notifyCustomer(ent.id,m,S.settings.name);
-      if(isCust&&ent.phone)setTimeout(()=>notifyDebt(ent.name,ent.phone,amount,newB,isDebt?'debt':'payment'),400);
-    }catch(e){console.error(e);$('#err').textContent='فشل: '+(e.code||e.message||'خطأ');$('#err').style.display='block';svBtn.disabled=false;svBtn.textContent='تأكيد'}};
+  if ($('#full')) $('#full').onclick = () => $('#am').value = ent.balance;
+  $('#sv').onclick = async () => {
+    const amount = Number($('#am').value);
+    if (!(amount > 0)) return toast('أدخل مبلغاً صحيحاً');
+    const oldB = Number(ent.balance) || 0;
+    const newB = isDebt ? oldB + amount : oldB - amount;
+    if (isDebt && isCust && ent.limit > 0 && newB > ent.limit && !confirm('هذا الدين يتجاوز سقف العميل (' + n2(ent.limit) + '). متابعة؟')) return;
+    const svBtn = $('#sv'); svBtn.disabled = true; svBtn.textContent = 'جارٍ الحفظ...';
+    try {
+      const col = isCust ? 'accounts' : 'suppliers';
+      const ledger = ledgerData(isDebt ? 'debt' : 'payment', isDebt ? 'دين' : 'دفعة', amount, isDebt ? 'out' : 'in',
+        isDebt ? 0 : (isCust ? amount : -amount),
+        { ...(isCust ? { accountId: ent.id } : { supplierId: ent.id }), note: $('#nt').value.trim() });
+      const updatedEntity = { ...ent, balance: newB };
+      await LDB.bulk([{ s: 'ledger', put: ledger }, { s: col, put: updatedEntity }]);
+      await loadAll();
+      if (S.user && !S.user.isAnonymous) { Cloud.push('ledger', ledger.id, ledger); Cloud.push(col, ent.id, updatedEntity); }
+      closeModal(true); toast('✅ تم التسجيل بنجاح'); render();
+      // إشعار واتساب
+      const note = $('#nt').value.trim(), cur = S.settings.currency || 'ر.ي', now = new Date();
+      let m = `مرحباً ${ent.name} 👋\n` + (isDebt ? `🔴 تم تسجيل دين جديد بقيمة: ${amount} ${cur}\n` : `🟢 تم تسجيل دفعة بقيمة: ${amount} ${cur}\n`);
+      if (note) m += `📝 ملاحظات: ${note}\n`;
+      m += `📊 إجمالي حسابك الحالي: ${newB} ${cur}\n📅 التاريخ: ${now.toLocaleDateString('ar-EG')} - ${now.toLocaleTimeString('ar-EG', { hour: '2-digit', minute: '2-digit' })}\n\n` + (isDebt ? 'شكراً لثقتكم بنا 🌹' : 'شكراً لالتزامكم بالسداد 💚');
+      if (isCust && ent.phone && S.settings.autoWhatsApp) setTimeout(() => whatsappSend(ent.phone, ent.name, m), 500);
+    } catch (e) {
+      console.error(e);
+      $('#err').textContent = 'فشل: ' + (e.message || 'خطأ');
+      $('#err').style.display = 'block';
+      svBtn.disabled = false; svBtn.textContent = 'تأكيد';
+    }
+  };
 }
 
-/* ===== المخزون ===== */
-function productsList(){
-  const st=p=>(p.stock||0)<=0?'due':(p.stock||0)<=(p.min||0)?'warn':'ok';
-  listPage({title:'المخزون',add:'+ منتج',onAdd:()=>productForm(),
-    head:`<div class="g2"><div class="stat"><div class="l">عدد المنتجات</div><div class="n">${S.products.length}</div></div><div class="stat"><div class="l">قيمة المخزون</div><div class="n blue">${fmt(sum(S.products,p=>(p.stock||0)*(p.cost||0)))}</div></div></div>`,
-    rows:q=>S.products.filter(p=>!q||p.name.toLowerCase().includes(q)).sort((a,b)=>a.name.localeCompare(b.name))
-      .map(p=>`<div class="item" data-id="${p.id}"><div><b>${esc(p.name)}</b><br><small>${esc(p.unit||'حبة')} · تكلفة ${n2(p.cost)} · بيع ${n2(p.price)}</small></div><div style="text-align:left"><b class="${st(p)}">${n2(p.stock)}</b><br><small>ربح ${n2((p.price||0)-(p.cost||0))}</small></div></div>`).join(''),
-    click:id=>productForm(S.products.find(p=>p.id===id))});
+/* ============================================================
+   19) المخزون
+   ============================================================ */
+function productsList() {
+  const st = p => (p.stock || 0) <= 0 ? 'due' : (p.stock || 0) <= (p.min || 0) ? 'warn' : 'ok';
+  listPage({
+    title: 'المخزون', add: '+ منتج', onAdd: () => productForm(),
+    head: `<div class="g2"><div class="stat"><div class="l">عدد المنتجات</div><div class="n">${S.products.length}</div></div><div class="stat"><div class="l">قيمة المخزون</div><div class="n blue">${fmt(sum(S.products, p => (p.stock || 0) * (p.cost || 0)))}</div></div></div>`,
+    rows: q => S.products.filter(p => !q || p.name.toLowerCase().includes(q)).sort((a, b) => a.name.localeCompare(b.name))
+      .map(p => `<div class="item" data-id="${p.id}"><div><b>${esc(p.name)}</b><br><small>${esc(p.unit || 'حبة')} · تكلفة ${n2(p.cost)} · بيع ${n2(p.price)}</small></div><div style="text-align:left"><b class="${st(p)}">${n2(p.stock)}</b><br><small>ربح ${n2((p.price || 0) - (p.cost || 0))}</small></div></div>`).join(''),
+    click: id => productForm(S.products.find(p => p.id === id))
+  });
 }
-function productForm(p){if(off())return;
-  const e=!!p;
-  modal(`<h2>${e?'تعديل منتج':'منتج جديد'}</h2><label>اسم المنتج *</label><input id="n" value="${esc(p?.name||'')}">
-  <div class="g2"><div><label>الوحدة</label><input id="u" value="${esc(p?.unit||'حبة')}"></div><div><label>الكمية</label><input id="st" type="number" value="${p?.stock??0}"></div></div>
-  <div class="g2"><div><label>سعر التكلفة</label><input id="co" type="number" value="${p?.cost??0}"></div><div><label>سعر البيع</label><input id="pr" type="number" value="${p?.price??0}"></div></div>
-  <label>حد التنبيه</label><input id="mn" type="number" value="${p?.min??0}">${btns()}`);
-  $('#sv').onclick=async()=>{if(off())return;
-    const name=$('#n').value.trim();if(!name)return toast('اكتب الاسم');
-    const d={name,unit:$('#u').value.trim()||'حبة',stock:Number($('#st').value)||0,cost:Number($('#co').value)||0,price:Number($('#pr').value)||0,min:Number($('#mn').value)||0};
-    if(e)await updateDoc(doc(db,'products',p.id),d);else await setDoc(doc(collection(db,'products')),{owner:S.user.uid,...d,createdAt:Date.now()});
-    closeModal();toast('تم الحفظ');};
+function productForm(p) {
+  const e = !!p;
+  modal(`<h2>${e ? 'تعديل منتج' : 'منتج جديد'}</h2><label>اسم المنتج *</label><input id="n" value="${esc(p?.name || '')}">
+  <div class="g2"><div><label>الوحدة</label><input id="u" value="${esc(p?.unit || 'حبة')}"></div><div><label>الكمية</label><input id="st" type="number" value="${p?.stock ?? 0}"></div></div>
+  <div class="g2"><div><label>سعر التكلفة</label><input id="co" type="number" value="${p?.cost ?? 0}"></div><div><label>سعر البيع</label><input id="pr" type="number" value="${p?.price ?? 0}"></div></div>
+  <label>حد التنبيه</label><input id="mn" type="number" value="${p?.min ?? 0}">${btns()}`);
+  $('#sv').onclick = async () => {
+    const name = $('#n').value.trim(); if (!name) return toast('اكتب الاسم');
+    const d = { id: p?.id || newToken(), name, unit: $('#u').value.trim() || 'حبة', stock: Number($('#st').value) || 0, cost: Number($('#co').value) || 0, price: Number($('#pr').value) || 0, min: Number($('#mn').value) || 0, createdAt: p?.createdAt || Date.now() };
+    await dbSave('products', d);
+    closeModal(true); toast('تم الحفظ'); render();
+  };
 }
 
-/* ===== الفواتير (بيع/شراء) ===== */
-function docList(kind){
-  const sl=kind==='sale',L=sl?S.sales:S.purchases;
-  A.innerHTML=`<div class="top"><h1>${sl?'المبيعات':'المشتريات'}</h1><button class="btn am sm" id="add">+ فاتورة</button></div>
-  <div class="card row"><div><small>الإجمالي</small><div class="big ${sl?'ok':'warn'}">${fmt(sum(L,s=>s.total))}</div></div><small>${L.length} فاتورة</small></div>
-  <div class="card">${L.slice(0,60).map(s=>`<div class="item" style="cursor:default"><div><b>${esc(sl?s.customerName||'عميل نقدي':s.supplierName||'مورد')}</b><br><small>${dt(s.ts)} · ${s.items?.length||0} صنف${s.due>0?' · <span class="due">آجل '+n2(s.due)+'</span>':''}</small></div>
-  <div style="text-align:left"><b class="${sl?'ok':'warn'}">${fmt(s.total)}</b><br><a class="btn g sm" data-inv="${s.id}" style="margin-top:4px">🖨️ فاتورة</a></div></div>`).join('')||'<p class="hint">لا توجد فواتير</p>'}</div>`;
-  $('#add').onclick=()=>go(sl?'sale-new':'purchase-new');
-  A.querySelectorAll('[data-inv]').forEach(b=>b.onclick=()=>invoicePDF(L.find(x=>x.id===b.dataset.inv),kind));
+/* ============================================================
+   20) الفواتير
+   ============================================================ */
+function docList(kind) {
+  const sl = kind === 'sale', L = sl ? S.sales : S.purchases;
+  A.innerHTML = `<div class="top"><h1>${sl ? 'المبيعات' : 'المشتريات'}</h1><button class="btn am sm" id="add">+ فاتورة</button></div>
+  <div class="card row"><div><small>الإجمالي</small><div class="big ${sl ? 'ok' : 'warn'}">${fmt(sum(L, s => s.total))}</div></div><small>${L.length} فاتورة</small></div>
+  <div class="card">${L.slice(0, 60).map(s => `<div class="item" style="cursor:default"><div><b>${esc(sl ? s.customerName || 'عميل نقدي' : s.supplierName || 'مورد')}</b><br><small>${dt(s.ts)} · ${s.items?.length || 0} صنف${s.due > 0 ? ' · <span class="due">آجل ' + n2(s.due) + '</span>' : ''}</small></div>
+  <div style="text-align:left"><b class="${sl ? 'ok' : 'warn'}">${fmt(s.total)}</b><br><a class="btn g sm" data-inv="${s.id}" style="margin-top:4px">🖨️ فاتورة</a></div></div>`).join('') || '<p class="hint">لا توجد فواتير</p>'}</div>`;
+  $('#add').onclick = () => go(sl ? 'sale-new' : 'purchase-new');
+  A.querySelectorAll('[data-inv]').forEach(b => b.onclick = () => invoicePDF(L.find(x => x.id === b.dataset.inv), kind));
 }
-function invNew(kind){
-  S.formOpen=true;const sl=kind==='sale',P=sl?S.customers:S.suppliers,pre=sl?'':S.supplierId;
-  A.innerHTML=`<div class="top"><button class="btn g sm" id="bk">→ رجوع</button><h1>فاتورة ${sl?'بيع':'شراء'}</h1><span></span></div>
-  <div class="card"><label>${sl?'العميل':'المورد'}</label><select id="party"><option value="">${sl?'عميل نقدي':'مورد نقدي'}</option>${P.map(c=>`<option value="${c.id}" ${pre===c.id?'selected':''}>${esc(c.name)} (${n2(c.balance)})</option>`).join('')}</select></div>
-  <div class="card"><label>إضافة صنف</label><select id="prod"><option value="">اختر منتجاً...</option>${S.products.map(p=>`<option value="${p.id}">${esc(p.name)} — ${n2(sl?p.price:p.cost)}${sl?' (متاح '+n2(p.stock)+')':''}</option>`).join('')}</select>
+function invNew(kind) {
+  S.formOpen = true;
+  const sl = kind === 'sale', P = sl ? S.customers : S.suppliers, pre = sl ? '' : S.supplierId;
+  A.innerHTML = `<div class="top"><button class="btn g sm" id="bk">→ رجوع</button><h1>فاتورة ${sl ? 'بيع' : 'شراء'}</h1><span></span></div>
+  <div class="card"><label>${sl ? 'العميل' : 'المورد'}</label><select id="party"><option value="">${sl ? 'عميل نقدي' : 'مورد نقدي'}</option>${P.map(c => `<option value="${c.id}" ${pre === c.id ? 'selected' : ''}>${esc(c.name)} (${n2(c.balance)})</option>`).join('')}</select></div>
+  <div class="card"><label>إضافة صنف</label><select id="prod"><option value="">اختر منتجاً...</option>${S.products.map(p => `<option value="${p.id}">${esc(p.name)} — ${n2(sl ? p.price : p.cost)}${sl ? ' (متاح ' + n2(p.stock) + ')' : ''}</option>`).join('')}</select>
   <div class="g2"><input id="qty" type="number" placeholder="الكمية" value="1"><input id="prc" type="number" placeholder="السعر"></div><button class="btn o w sm" id="addIt">+ إضافة للفاتورة</button></div>
   <div class="card"><b>الأصناف</b><div id="cart"></div></div>
-  <div class="card"><div class="row"><span>الإجمالي</span><b class="big ${sl?'ok':'warn'}" id="tot" style="font-size:1.3rem">0</b></div>
-  <label>المدفوع نقداً (الباقي يُسجَّل آجلاً)</label><input id="paid" type="number" placeholder="0"><button class="btn am w" id="save">💾 حفظ الفاتورة</button></div>`;
-  $('#bk').onclick=()=>{S.formOpen=false;go(sl?'sales':'purchases')};
-  $('#prod').onchange=e=>{const p=S.products.find(x=>x.id===e.target.value);if(p)$('#prc').value=sl?p.price:p.cost};
-  $('#addIt').onclick=()=>{const p=S.products.find(x=>x.id===$('#prod').value);if(!p)return toast('اختر منتجاً');
-    const q=Number($('#qty').value)||0,pr=Number($('#prc').value)||(sl?p.price:p.cost);if(q<=0)return toast('كمية غير صحيحة');
-    if(sl&&q>(p.stock||0)&&!confirm('الكمية أكبر من المتاح في المخزون. متابعة؟'))return;
-    S.cart.push({id:p.id,name:p.name,qty:q,price:pr});$('#prod').value='';$('#qty').value=1;$('#prc').value='';drawCart()};
-  drawCart();$('#save').onclick=()=>saveInv(kind);
+  <div class="card"><div class="row"><span>الإجمالي</span><b class="big ${sl ? 'ok' : 'warn'}" id="tot" style="font-size:1.3rem">0</b></div>
+  <label>المدفوع نقداً (الباقي آجل)</label><input id="paid" type="number" placeholder="0"><button class="btn am w" id="save">💾 حفظ الفاتورة</button></div>`;
+  $('#bk').onclick = () => history.back();
+  $('#prod').onchange = e => { const p = S.products.find(x => x.id === e.target.value); if (p) $('#prc').value = sl ? p.price : p.cost; };
+  $('#addIt').onclick = () => {
+    const p = S.products.find(x => x.id === $('#prod').value); if (!p) return toast('اختر منتجاً');
+    const q = Number($('#qty').value) || 0, pr = Number($('#prc').value) || (sl ? p.price : p.cost);
+    if (q <= 0) return toast('كمية غير صحيحة');
+    if (sl && q > (p.stock || 0) && !confirm('الكمية أكبر من المتاح. متابعة؟')) return;
+    S.cart.push({ id: p.id, name: p.name, qty: q, price: pr });
+    $('#prod').value = ''; $('#qty').value = 1; $('#prc').value = ''; drawCart();
+  };
+  drawCart();
+  $('#save').onclick = () => saveInv(kind);
 }
-function drawCart(){
-  $('#tot').textContent=n2(sum(S.cart,i=>i.qty*i.price))+' '+S.settings.currency;
-  $('#cart').innerHTML=S.cart.map((i,x)=>`<div class="tx"><div><b>${esc(i.name)}</b><br><small>${n2(i.qty)} × ${n2(i.price)}</small></div><div><b>${n2(i.qty*i.price)}</b> <button class="btn o r sm" data-del="${x}">×</button></div></div>`).join('')||'<p class="hint">لم تُضف أصناف بعد</p>';
-  $('#cart').querySelectorAll('[data-del]').forEach(b=>b.onclick=()=>{S.cart.splice(+b.dataset.del,1);drawCart()});
+function drawCart() {
+  $('#tot').textContent = n2(sum(S.cart, i => i.qty * i.price)) + ' ' + S.settings.currency;
+  $('#cart').innerHTML = S.cart.map((i, x) => `<div class="tx"><div><b>${esc(i.name)}</b><br><small>${n2(i.qty)} × ${n2(i.price)}</small></div><div><b>${n2(i.qty * i.price)}</b> <button class="btn o r sm" data-del="${x}">×</button></div></div>`).join('') || '<p class="hint">لم تُضف أصناف بعد</p>';
+  $('#cart').querySelectorAll('[data-del]').forEach(b => b.onclick = () => { S.cart.splice(+b.dataset.del, 1); drawCart(); });
 }
-async function saveInv(kind){if(off())return;
-  if(!S.cart.length)return toast('أضف أصنافاً');
-  const sl=kind==='sale',pid=$('#party').value,p=(sl?S.customers:S.suppliers).find(x=>x.id===pid);
-  const total=sum(S.cart,i=>i.qty*i.price),paid=Math.max(0,Math.min(Number($('#paid').value)||0,total)),due=total-paid;
-  if(due>0&&!p)return toast(sl?'اختر عميلاً للبيع الآجل':'اختر مورداً للشراء الآجل');
-  const bt=writeBatch(db),ref=doc(collection(db,sl?'sales':'purchases')),idf=sl?'accountId':'supplierId',pc=sl?'accounts':'suppliers';
-  bt.set(ref,{owner:S.user.uid,ts:Date.now(),[sl?'customerId':'supplierId']:pid||null,[sl?'customerName':'supplierName']:p?.name||(sl?'عميل نقدي':'مورد نقدي'),
-    items:S.cart.map(i=>({id:i.id,name:i.name,qty:i.qty,price:i.price})),total,paid,due});
-  S.cart.forEach(i=>bt.update(doc(db,'products',i.id),sl?{stock:increment(-i.qty)}:{stock:increment(i.qty),cost:i.price}));
-  if(paid>0)bt.set(newLedgerRef(),ledgerData(sl?'sale':'purchase',sl?'فاتورة بيع':'فاتورة شراء',paid,sl?'in':'out',sl?paid:-paid,{ref:ref.id}));
-  if(due>0){bt.set(newLedgerRef(),ledgerData(sl?'sale':'purchase',sl?'فاتورة بيع آجل':'فاتورة شراء آجل',due,'out',0,{[idf]:pid,ref:ref.id}));bt.update(doc(db,pc,pid),{balance:increment(due)})}
-  await bt.commit();
-  const saved={id:ref.id,ts:Date.now(),[sl?'customerName':'supplierName']:p?.name||(sl?'عميل نقدي':'مورد نقدي'),items:[...S.cart],total,paid,due};
-  S.formOpen=false;S.cart=[];toast('✅ تم حفظ الفاتورة');go(sl?'sales':'purchases');
-  setTimeout(()=>{modal(`<h2>تم حفظ الفاتورة ✅</h2><p style="margin:10px 0;font-size:.9rem">هل تريد طباعة الفاتورة؟</p><div class="row"><button class="btn o w" onclick="closeModal()">إغلاق</button><button class="btn w" id="pv">🖨️ طباعة PDF</button></div>`);
-    $('#pv').onclick=()=>{closeModal();invoicePDF(saved,kind)}},500);
+async function saveInv(kind) {
+  if (!S.cart.length) return toast('أضف أصنافاً');
+  const sl = kind === 'sale', pid = $('#party').value;
+  const p = (sl ? S.customers : S.suppliers).find(x => x.id === pid);
+  const total = sum(S.cart, i => i.qty * i.price);
+  const paid = Math.max(0, Math.min(Number($('#paid').value) || 0, total));
+  const due = total - paid;
+  if (due > 0 && !p) return toast(sl ? 'اختر عميلاً للبيع الآجل' : 'اختر مورداً للشراء الآجل');
+  const ref = newToken();
+  const invData = {
+    id: ref, ts: Date.now(),
+    [sl ? 'customerId' : 'supplierId']: pid || null,
+    [sl ? 'customerName' : 'supplierName']: p?.name || (sl ? 'عميل نقدي' : 'مورد نقدي'),
+    items: S.cart.map(i => ({ id: i.id, name: i.name, qty: i.qty, price: i.price })), total, paid, due
+  };
+  const ops = [{ s: sl ? 'sales' : 'purchases', put: invData }];
+  // تحديث المخزون
+  for (const it of S.cart) {
+    const prod = S.products.find(x => x.id === it.id); if (!prod) continue;
+    const upd = sl
+      ? { ...prod, stock: (prod.stock || 0) - it.qty }
+      : { ...prod, stock: (prod.stock || 0) + it.qty, cost: it.price };
+    ops.push({ s: 'products', put: upd });
+  }
+  // سجل الفاتورة + دفع/دين
+  if (paid > 0) ops.push({ s: 'ledger', put: ledgerData(sl ? 'sale' : 'purchase', sl ? 'فاتورة بيع' : 'فاتورة شراء', paid, sl ? 'in' : 'out', sl ? paid : -paid, { ref }) });
+  if (due > 0 && p) {
+    ops.push({ s: 'ledger', put: ledgerData(sl ? 'sale' : 'purchase', sl ? 'فاتورة بيع آجل' : 'فاتورة شراء آجل', due, 'out', 0, { ...(sl ? { accountId: pid } : { supplierId: pid }), ref }) });
+    const col = sl ? 'accounts' : 'suppliers';
+    ops.push({ s: col, put: { ...p, balance: (Number(p.balance) || 0) + due } });
+  }
+  await LDB.bulk(ops);
+  await loadAll();
+  if (S.user && !S.user.isAnonymous) ops.forEach(o => o.put && !Array.isArray(o.put) && Cloud.push(o.s, o.put.id, o.put));
+  S.formOpen = false; S.cart = []; toast('✅ تم حفظ الفاتورة');
+  history.back();
+  setTimeout(() => { modal(`<h2>تم حفظ الفاتورة ✅</h2><p style="margin:10px 0;font-size:.9rem">هل تريد طباعة الفاتورة؟</p><div class="row"><button class="btn o w" onclick="closeModal()">إغلاق</button><button class="btn w" id="pv">🖨️ طباعة PDF</button></div>`);
+    $('#pv').onclick = () => { closeModal(); invoicePDF(invData, kind); }; }, 300);
 }
 
-/* ===== المصروفات ===== */
-function expensesList(){
-  A.innerHTML=`<div class="top"><h1>المصروفات</h1><button class="btn am sm" id="add">+ مصروف</button></div>
-  <div class="card"><small>إجمالي المصروفات</small><div class="big due">${fmt(sum(S.expenses,e=>e.amount))}</div></div>
-  <div class="card">${S.expenses.slice(0,60).map(e=>`<div class="item" style="cursor:default"><div><b>${esc(e.category||'عام')}</b><br><small>${dt(e.ts)} ${e.note?'· '+esc(e.note):''}</small></div><b class="due">-${fmt(e.amount)}</b></div>`).join('')||'<p class="hint">لا توجد مصروفات</p>'}</div>`;
-  $('#add').onclick=()=>expenseForm();
+/* ============================================================
+   21) المصروفات
+   ============================================================ */
+function expensesList() {
+  A.innerHTML = `<div class="top"><h1>المصروفات</h1><button class="btn am sm" id="add">+ مصروف</button></div>
+  <div class="card"><small>إجمالي المصروفات</small><div class="big due">${fmt(sum(S.expenses, e => e.amount))}</div></div>
+  <div class="card">${S.expenses.slice(0, 60).map(e => `<div class="item" style="cursor:default"><div><b>${esc(e.category || 'عام')}</b><br><small>${dt(e.ts)} ${e.note ? '· ' + esc(e.note) : ''}</small></div><b class="due">-${fmt(e.amount)}</b></div>`).join('') || '<p class="hint">لا توجد مصروفات</p>'}</div>`;
+  $('#add').onclick = () => expenseForm();
 }
-function expenseForm(){if(off())return;
-  modal(`<h2>مصروف جديد</h2><label>التصنيف</label><select id="cat">${['إيجار','رواتب','كهرباء','ماء','اتصالات','نقل','صيانة','أخرى'].map(x=>`<option>${x}</option>`).join('')}</select>
+function expenseForm() {
+  modal(`<h2>مصروف جديد</h2><label>التصنيف</label><select id="cat">${['إيجار','رواتب','كهرباء','ماء','اتصالات','نقل','صيانة','أخرى'].map(x => `<option>${x}</option>`).join('')}</select>
   <label>المبلغ *</label><input id="am" type="number" inputmode="decimal"><label>ملاحظة</label><input id="nt">${btns()}`);
-  $('#sv').onclick=async()=>{if(off())return;const amount=Number($('#am').value);if(!(amount>0))return toast('أدخل مبلغاً');
-    const cat=$('#cat').value,nt=$('#nt').value.trim(),bt=writeBatch(db);
-    bt.set(doc(collection(db,'expenses')),{owner:S.user.uid,ts:Date.now(),category:cat,amount,note:nt});
-    bt.set(newLedgerRef(),ledgerData('expense','مصروف: '+cat,amount,'out',-amount,{note:nt}));await bt.commit();closeModal();toast('تم التسجيل')};
+  $('#sv').onclick = async () => {
+    const amount = Number($('#am').value); if (!(amount > 0)) return toast('أدخل مبلغاً');
+    const cat = $('#cat').value, nt = $('#nt').value.trim();
+    const ex = { id: newToken(), ts: Date.now(), category: cat, amount, note: nt };
+    const ledger = ledgerData('expense', 'مصروف: ' + cat, amount, 'out', -amount, { note: nt });
+    await LDB.bulk([{ s: 'expenses', put: ex }, { s: 'ledger', put: ledger }]);
+    await loadAll();
+    if (S.user && !S.user.isAnonymous) { Cloud.push('expenses', ex.id, ex); Cloud.push('ledger', ledger.id, ledger); }
+    closeModal(true); toast('تم التسجيل'); render();
+  };
 }
 
-/* ===== الموظفين ===== */
-function employeesList(){
-  listPage({title:'الموظفين',add:'+ موظف',onAdd:()=>employeeForm(),
-    head:`<div class="g3"><div class="stat"><div class="l">الموظفين</div><div class="n">${S.employees.length}</div></div><div class="stat"><div class="l">سحبيات</div><div class="n purple">${n2(sum(S.employees,e=>pos(e.balance)))}</div></div><div class="stat"><div class="l">رواتب شهرية</div><div class="n warn">${n2(sum(S.employees,e=>Number(e.salary)))}</div></div></div>`,
-    rows:q=>S.employees.filter(e=>!q||e.name.toLowerCase().includes(q)||(e.phone||'').includes(q)).map(e=>rowH('#7a5af8',e.name,esc(e.position||'—'),fmt(e.balance||0),(e.balance||0)>0?'purple':'ok',e.id,`<br><small>الراتب ${n2(e.salary)}</small>`)).join(''),
-    click:id=>go('employee',id)});
+/* ============================================================
+   22) الموظفين
+   ============================================================ */
+function employeesList() {
+  listPage({
+    title: 'الموظفين', add: '+ موظف', onAdd: () => employeeForm(),
+    head: `<div class="g3"><div class="stat"><div class="l">الموظفين</div><div class="n">${S.employees.length}</div></div><div class="stat"><div class="l">سحبيات</div><div class="n purple">${n2(sum(S.employees, e => pos(e.balance)))}</div></div><div class="stat"><div class="l">رواتب شهرية</div><div class="n warn">${n2(sum(S.employees, e => Number(e.salary)))}</div></div></div>`,
+    rows: q => S.employees.filter(e => !q || e.name.toLowerCase().includes(q) || (e.phone || '').includes(q))
+      .map(e => rowH('#7a5af8', e.name, esc(e.position || '—'), fmt(e.balance || 0), (e.balance || 0) > 0 ? 'purple' : 'ok', e.id, `<br><small>الراتب ${n2(e.salary)}</small>`)).join(''),
+    click: id => go('employee', id)
+  });
 }
-function employeeForm(emp){if(off())return;
-  const e=!!emp;
-  modal(`<h2>${e?'تعديل موظف':'موظف جديد'}</h2><label>الاسم *</label><input id="n" value="${esc(emp?.name||'')}"><label>الوظيفة</label><input id="po" value="${esc(emp?.position||'')}" placeholder="كاشير، عامل...">
-  <label>الهاتف</label><input id="ph" type="tel" value="${esc(emp?.phone||'')}"><label>الراتب الشهري</label><input id="sa" type="number" value="${emp?.salary??0}">
-  ${e?'':`<label>سحبيات سابقة</label><input id="op" type="number" placeholder="0">`}${btns()}`);
-  $('#sv').onclick=async()=>{if(off())return;
-    const name=$('#n').value.trim();if(!name)return toast('اكتب الاسم');
-    const d={name,position:$('#po').value.trim(),phone:$('#ph').value.trim(),salary:Number($('#sa').value)||0};
-    if(e)await updateDoc(doc(db,'employees',emp.id),d);
-    else{const op=Number($('#op').value)||0,r=doc(collection(db,'employees')),bt=writeBatch(db);
-      bt.set(r,{owner:S.user.uid,...d,balance:op,createdAt:Date.now()});
-      if(op>0)bt.set(newLedgerRef(),ledgerData('advance','سحبيات سابقة',op,'out',-op,{employeeId:r.id}));await bt.commit()}
-    closeModal();toast('تم الحفظ');};
+function employeeForm(emp) {
+  const e = !!emp;
+  modal(`<h2>${e ? 'تعديل موظف' : 'موظف جديد'}</h2><label>الاسم *</label><input id="n" value="${esc(emp?.name || '')}"><label>الوظيفة</label><input id="po" value="${esc(emp?.position || '')}" placeholder="كاشير، عامل...">
+  <label>الهاتف</label><input id="ph" type="tel" value="${esc(emp?.phone || '')}"><label>الراتب الشهري</label><input id="sa" type="number" value="${emp?.salary ?? 0}">
+  ${e ? '' : `<label>سحبيات سابقة</label><input id="op" type="number" placeholder="0">`}${btns()}`);
+  $('#sv').onclick = async () => {
+    const name = $('#n').value.trim(); if (!name) return toast('اكتب الاسم');
+    const d = { name, position: $('#po').value.trim(), phone: $('#ph').value.trim(), salary: Number($('#sa').value) || 0 };
+    if (e) { await dbSave('employees', { ...emp, ...d }); }
+    else {
+      const op = Number($('#op').value) || 0;
+      const emp2 = { id: newToken(), ...d, balance: op, createdAt: Date.now() };
+      const ops = [{ s: 'employees', put: emp2 }];
+      if (op > 0) ops.push({ s: 'ledger', put: ledgerData('advance', 'سحبيات سابقة', op, 'out', -op, { employeeId: emp2.id }) });
+      await LDB.bulk(ops); await loadAll();
+      if (S.user && !S.user.isAnonymous) { Cloud.push('employees', emp2.id, emp2); if (op > 0) Cloud.push('ledger', ops[1].put.id, ops[1].put); }
+    }
+    closeModal(true); toast('تم الحفظ'); render();
+  };
 }
-function employeePage(){
-  const emp=S.employees.find(x=>x.id===S.employeeId);if(!emp)return go('employees');
-  const txs=S.ledger.filter(l=>l.employeeId===emp.id).sort((a,b)=>b.ts-a.ts),T=t=>sum(txs.filter(x=>x.type===t),x=>x.amount),b=emp.balance||0;
-  A.innerHTML=`<div class="top"><button class="btn g sm" id="bk">→ رجوع</button><button class="btn g sm" id="ed">تعديل</button></div>
-  <div class="hero" style="text-align:center"><div class="av" style="margin:0 auto 6px;width:56px;height:56px;background:rgba(255,255,255,.12);color:#fff">${esc(initials(emp.name))}</div><h2>${esc(emp.name)}</h2><small>${esc(emp.position||'')} ${emp.phone?'· '+esc(emp.phone):''}</small>
-  <div class="big" style="margin-top:6px">${fmt(b)}</div><small>${b>0?'سحبيات مستحقة عليه':b<0?'رصيد له':'لا توجد سحبيات'} · الراتب ${fmt(emp.salary||0)}</small></div>
+function employeePage() {
+  const emp = S.employees.find(x => x.id === S.employeeId); if (!emp) return go('employees');
+  const txs = S.ledger.filter(l => l.employeeId === emp.id).sort((a, b) => b.ts - a.ts);
+  const T = t => sum(txs.filter(x => x.type === t), x => x.amount);
+  const b = emp.balance || 0;
+  A.innerHTML = `<div class="top"><button class="btn g sm" id="bk">→ رجوع</button><button class="btn g sm" id="ed">تعديل</button></div>
+  <div class="hero" style="text-align:center"><div class="av" style="margin:0 auto 6px;width:56px;height:56px;background:rgba(255,255,255,.12);color:#fff">${esc(initials(emp.name))}</div><h2>${esc(emp.name)}</h2><small>${esc(emp.position || '')} ${emp.phone ? '· ' + esc(emp.phone) : ''}</small>
+  <div class="big" style="margin-top:6px">${fmt(b)}</div><small>${b > 0 ? 'سحبيات مستحقة عليه' : b < 0 ? 'رصيد له' : 'لا توجد سحبيات'} · الراتب ${fmt(emp.salary || 0)}</small></div>
   <div class="g2"><button class="btn" id="adv" style="background:var(--pur)">+ سحبية</button><button class="btn gr" id="pay">+ دفع راتب</button><button class="btn o" id="bon">+ مكافأة</button><button class="btn o r" id="ded">− خصم</button></div>
   <div class="card g2" style="font-size:.8rem"><div><small>إجمالي السحبيات</small><br><b class="purple">${fmt(T('advance'))}</b></div><div><small>إجمالي الرواتب</small><br><b class="ok">${fmt(T('salary'))}</b></div><div><small>المكافآت</small><br><b class="ok">${fmt(T('bonus'))}</b></div><div><small>الخصومات</small><br><b class="due">${fmt(T('deduction'))}</b></div></div>
-  <div class="sec">الحركات (${txs.length}) <a class="btn g sm" id="pd">PDF</a></div><div class="card">${txs.map(txRow).join('')||'<p class="hint">لا توجد حركات</p>'}</div>`;
-  $('#bk').onclick=()=>go('employees');$('#ed').onclick=()=>employeeForm(emp);$('#pd').onclick=()=>employeeStatementPDF(emp,txs);
-  [['adv','advance'],['pay','salary'],['bon','bonus'],['ded','deduction']].forEach(([i,t])=>$('#'+i).onclick=()=>employeeAmountForm(t,emp));
+  <div class="sec">الحركات (${txs.length}) <a class="btn g sm" id="pd">PDF</a></div><div class="card">${txs.map(txRow).join('') || '<p class="hint">لا توجد حركات</p>'}</div>`;
+  $('#bk').onclick = () => history.back();
+  $('#ed').onclick = () => employeeForm(emp);
+  $('#pd').onclick = () => employeeStatementPDF(emp, txs);
+  [['adv','advance'],['pay','salary'],['bon','bonus'],['ded','deduction']].forEach(([i, t]) => $('#' + i).onclick = () => employeeAmountForm(t, emp));
 }
-function employeeAmountForm(type,emp){if(off())return;
-  const Lb={advance:{title:'تسجيل سحبية',sub:'الموظف يأخذ نقوداً من الصندوق',sign:1,cash:-1,dir:'out'},salary:{title:'دفع راتب',sub:'خصم من الرصيد وتسليم نقود',sign:-1,cash:-1,dir:'out'},
-    bonus:{title:'مكافأة',sub:'تخفيض المستحق عليه كمكافأة',sign:-1,cash:0,dir:'out'},deduction:{title:'خصم/جزاء',sub:'زيادة المستحق عليه كعقوبة',sign:1,cash:0,dir:'in'}}[type];
+function employeeAmountForm(type, emp) {
+  const Lb = {
+    advance: { title: 'تسجيل سحبية', sub: 'الموظف يأخذ نقوداً من الصندوق', sign: 1, cash: -1, dir: 'out' },
+    salary: { title: 'دفع راتب', sub: 'خصم من الرصيد وتسليم نقود', sign: -1, cash: -1, dir: 'out' },
+    bonus: { title: 'مكافأة', sub: 'تخفيض المستحق عليه كمكافأة', sign: -1, cash: 0, dir: 'out' },
+    deduction: { title: 'خصم/جزاء', sub: 'زيادة المستحق عليه كعقوبة', sign: 1, cash: 0, dir: 'in' }
+  }[type];
   modal(`<h2>${Lb.title} - ${esc(emp.name)}</h2><small>${Lb.sub}</small><label>المبلغ</label><input id="am" type="number" inputmode="decimal" placeholder="0" autofocus>
   <label>ملاحظة</label><input id="nt" placeholder="اختياري"><div id="err" style="color:var(--red);font-size:.8rem;display:none"></div>${btns('تأكيد')}`);
-  $('#sv').onclick=async()=>{if(off())return;const amount=Number($('#am').value);if(!(amount>0))return toast('أدخل مبلغاً صحيحاً');
-    const b=$('#sv');b.disabled=true;b.textContent='جارٍ الحفظ...';
-    try{const bt=writeBatch(db);
-      bt.set(newLedgerRef(),ledgerData(type,Lb.title,amount,Lb.dir,Lb.cash*amount,{employeeId:emp.id,note:$('#nt').value.trim()}));
-      bt.update(doc(db,'employees',emp.id),{balance:(Number(emp.balance)||0)+Lb.sign*amount});await bt.commit();closeModal();toast('✅ تم التسجيل')}
-    catch(e){console.error(e);$('#err').textContent='فشل: '+(e.code||e.message);$('#err').style.display='block';b.disabled=false;b.textContent='تأكيد'}};
+  $('#sv').onclick = async () => {
+    const amount = Number($('#am').value); if (!(amount > 0)) return toast('أدخل مبلغاً صحيحاً');
+    const b = $('#sv'); b.disabled = true; b.textContent = 'جارٍ الحفظ...';
+    try {
+      const ledger = ledgerData(type, Lb.title, amount, Lb.dir, Lb.cash * amount, { employeeId: emp.id, note: $('#nt').value.trim() });
+      const upd = { ...emp, balance: (Number(emp.balance) || 0) + Lb.sign * amount };
+      await LDB.bulk([{ s: 'ledger', put: ledger }, { s: 'employees', put: upd }]);
+      await loadAll();
+      if (S.user && !S.user.isAnonymous) { Cloud.push('ledger', ledger.id, ledger); Cloud.push('employees', emp.id, upd); }
+      closeModal(true); toast('✅ تم التسجيل'); render();
+    } catch (e) { console.error(e); $('#err').textContent = 'فشل: ' + e.message; $('#err').style.display = 'block'; b.disabled = false; b.textContent = 'تأكيد'; }
+  };
 }
 
-/* ===== التقارير ===== */
-function reportsView(){
-  const now=Date.now(),from={d:startDay(now),w:startDay(now-6*864e5),m:startDay(new Date(new Date().getFullYear(),new Date().getMonth(),1)),a:0}[S.per];
-  const P=a=>a.filter(x=>x.ts>=from),sa=sum(P(S.sales),s=>s.total),pu=sum(P(S.purchases),s=>s.total),ex=sum(P(S.expenses),e=>e.amount);
-  const recv=sum(S.customers,c=>pos(c.balance)),pay=sum(S.suppliers,s=>pos(s.balance)),adv=sum(S.employees,e=>pos(e.balance)),cash=sum(S.ledger,l=>l.cash),inv=sum(S.products,p=>(p.stock||0)*(p.cost||0));
-  const prof=sa-pu-ex,per=[['d','اليوم'],['w','7 أيام'],['m','الشهر'],['a','الكل']];
-  A.innerHTML=`<div class="top"><h1>التقارير</h1><button class="btn g sm" id="pd">تصدير PDF</button></div>
-  <div class="chips">${per.map(([v,l])=>`<div class="chip ${S.per===v?'on':''}" data-p="${v}">${l}</div>`).join('')}</div>
+/* ============================================================
+   23) التقارير + دفتر اليومية
+   ============================================================ */
+function reportsView() {
+  const now = Date.now();
+  const from = { d: startDay(now), w: startDay(now - 6 * 864e5), m: startDay(new Date(new Date().getFullYear(), new Date().getMonth(), 1)), a: 0 }[S.per];
+  const P = a => a.filter(x => x.ts >= from);
+  const sa = sum(P(S.sales), s => s.total), pu = sum(P(S.purchases), s => s.total), ex = sum(P(S.expenses), e => e.amount);
+  const recv = sum(S.customers, c => pos(c.balance)), pay = sum(S.suppliers, s => pos(s.balance));
+  const adv = sum(S.employees, e => pos(e.balance)), cash = sum(S.ledger, l => l.cash), inv = sum(S.products, p => (p.stock || 0) * (p.cost || 0));
+  const prof = sa - pu - ex, per = [['d','اليوم'],['w','7 أيام'],['m','الشهر'],['a','الكل']];
+  A.innerHTML = `<div class="top"><h1>التقارير</h1><button class="btn g sm" id="pd">تصدير PDF</button></div>
+  <div class="chips">${per.map(([v, l]) => `<div class="chip ${S.per === v ? 'on' : ''}" data-p="${v}">${l}</div>`).join('')}</div>
   <div class="g2"><div class="stat"><div class="l">المبيعات</div><div class="n ok">${fmt(sa)}</div></div><div class="stat"><div class="l">المشتريات</div><div class="n warn">${fmt(pu)}</div></div>
-  <div class="stat"><div class="l">المصروفات</div><div class="n due">${fmt(ex)}</div></div><div class="stat"><div class="l">صافي الربح التقديري</div><div class="n ${prof>=0?'ok':'due'}">${fmt(prof)}</div></div></div>
+  <div class="stat"><div class="l">المصروفات</div><div class="n due">${fmt(ex)}</div></div><div class="stat"><div class="l">صافي الربح التقديري</div><div class="n ${prof >= 0 ? 'ok' : 'due'}">${fmt(prof)}</div></div></div>
   <div class="card"><b>المبيعات آخر 7 أيام</b><canvas id="ch" height="150"></canvas></div>
-  <div class="card"><b>الوضع المالي الحالي</b><table>${[['النقدية بالصندوق',cash,'ok'],['ديون العملاء',recv,'due'],['مستحق للموردين',pay,'warn'],['سحبيات الموظفين',adv,'purple'],['قيمة المخزون',inv,'blue']].map(([l,v,c])=>`<tr><td>${l}</td><td class="${c}"><b>${fmt(v)}</b></td></tr>`).join('')}</table></div>`;
-  A.querySelectorAll('[data-p]').forEach(e=>e.onclick=()=>{S.per=e.dataset.p;reportsView()});
-  $('#pd').onclick=()=>exportPDF('تقرير مالي شامل',`<table border="1" cellspacing="0" cellpadding="8" style="width:100%;border-collapse:collapse;font-size:13px"><tr style="background:#eef3f0"><th>البند</th><th>المبلغ</th></tr>${[['المبيعات',sa],['المشتريات',pu],['المصروفات',ex],['صافي الربح التقديري',prof],['النقدية بالصندوق',cash],['ديون العملاء',recv],['مستحق للموردين',pay],['سحبيات الموظفين',adv],['قيمة المخزون',inv]].map(([l,v])=>`<tr><td>${l}</td><td>${fmt(v)}</td></tr>`).join('')}</table>`);
-  const days=[],vals=[];for(let i=6;i>=0;i--){const t0=startDay(now-i*864e5);days.push(new Date(t0).toLocaleDateString('ar-EG',{weekday:'short'}));vals.push(sum(S.sales.filter(s=>s.ts>=t0&&s.ts<t0+864e5),s=>s.total))}
-  if(S.chart){S.chart.destroy();S.chart=null}
-  need('chart').then(()=>{if(!$('#ch'))return;S.chart=new Chart($('#ch'),{type:'bar',data:{labels:days,datasets:[{data:vals,backgroundColor:'#f4a93a',borderRadius:8}]},options:{plugins:{legend:{display:false}},scales:{y:{beginAtZero:true}}}})}).catch(()=>{});
+  <div class="card"><b>الوضع المالي الحالي</b><table>${[['النقدية بالصندوق', cash, 'ok'], ['ديون العملاء', recv, 'due'], ['مستحق للموردين', pay, 'warn'], ['سحبيات الموظفين', adv, 'purple'], ['قيمة المخزون', inv, 'blue']].map(([l, v, c]) => `<tr><td>${l}</td><td class="${c}"><b>${fmt(v)}</b></td></tr>`).join('')}</table></div>`;
+  A.querySelectorAll('[data-p]').forEach(e => e.onclick = () => { S.per = e.dataset.p; reportsView(); });
+  $('#pd').onclick = () => exportPDF('تقرير مالي شامل', `<table border="1" cellspacing="0" cellpadding="8" style="width:100%;border-collapse:collapse;font-size:13px"><tr style="background:#eef3f0"><th>البند</th><th>المبلغ</th></tr>${[['المبيعات', sa], ['المشتريات', pu], ['المصروفات', ex], ['صافي الربح التقديري', prof], ['النقدية بالصندوق', cash], ['ديون العملاء', recv], ['مستحق للموردين', pay], ['سحبيات الموظفين', adv], ['قيمة المخزون', inv]].map(([l, v]) => `<tr><td>${l}</td><td>${fmt(v)}</td></tr>`).join('')}</table>`);
+  const days = [], vals = [];
+  for (let i = 6; i >= 0; i--) { const t0 = startDay(now - i * 864e5); days.push(new Date(t0).toLocaleDateString('ar-EG', { weekday: 'short' })); vals.push(sum(S.sales.filter(s => s.ts >= t0 && s.ts < t0 + 864e5), s => s.total)); }
+  if (S.chart) { S.chart.destroy(); S.chart = null; }
+  need('chart').then(() => { if (!$('#ch')) return; S.chart = new Chart($('#ch'), { type: 'bar', data: { labels: days, datasets: [{ data: vals, backgroundColor: '#f4a93a', borderRadius: 8 }] }, options: { plugins: { legend: { display: false } }, scales: { y: { beginAtZero: true } } } }); }).catch(() => {});
 }
-function ledgerView(){
-  const types=[['','الكل'],['sale','مبيعات'],['purchase','مشتريات'],['debt','ديون'],['payment','دفعات'],['expense','مصروفات'],['advance','سحبيات'],['salary','رواتب']];
-  A.innerHTML=`<div class="top"><h1>دفتر اليومية</h1></div><div class="chips">${types.map(([v,l])=>`<div class="chip ${S.lt===v?'on':''}" data-t="${v}">${l}</div>`).join('')}</div>
-  <div class="card">${S.ledger.filter(l=>!S.lt||l.type===S.lt).slice(0,200).map(txRow).join('')||'<p class="hint">لا توجد حركات</p>'}</div>`;
-  A.querySelectorAll('[data-t]').forEach(b=>b.onclick=()=>{S.lt=b.dataset.t;ledgerView()});
-}
-
-/* ===== الإعدادات ===== */
-function settingsView(){
-  A.innerHTML=`<div class="top"><h1>الإعدادات</h1></div><div class="card"><label>اسم المنشأة</label><input id="nm" value="${esc(S.settings.name)}"><label>العملة</label><input id="cu" value="${esc(S.settings.currency)}">
-  <label>الهاتف</label><input id="ph" value="${esc(S.settings.phone||'')}"><label>العنوان</label><input id="ad" value="${esc(S.settings.address||'')}">
-  <label class="row" style="margin-top:12px;color:var(--t)"><span><b>إشعار واتساب تلقائي</b><br><small>عند تسجيل دين أو دفعة</small></span><input type="checkbox" id="wa" style="width:22px;height:22px" ${S.settings.autoWhatsApp?'checked':''}></label>
-  <button class="btn am w" id="sv" style="margin-top:10px">حفظ الإعدادات</button></div>
-  <div class="card"><button class="btn o w" id="bk">💾 نسخة احتياطية (JSON)</button></div>`;
-  $('#sv').onclick=async()=>{if(off())return;S.settings={...S.settings,name:$('#nm').value.trim()||'الكامل سوفت',currency:$('#cu').value.trim()||'ر.ي',phone:$('#ph').value.trim(),address:$('#ad').value.trim(),autoWhatsApp:$('#wa').checked};
-    await setDoc(doc(db,'settings',S.user.uid),S.settings,{merge:true});toast('تم الحفظ');render()};
-  $('#bk').onclick=()=>{const d={settings:S.settings,customers:S.customers,suppliers:S.suppliers,products:S.products,sales:S.sales,purchases:S.purchases,expenses:S.expenses,ledger:S.ledger,employees:S.employees};
-    const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([JSON.stringify(d,null,2)],{type:'application/json'}));a.download='backup-'+Date.now()+'.json';a.click()};
+function ledgerView() {
+  const types = [['','الكل'],['sale','مبيعات'],['purchase','مشتريات'],['debt','ديون'],['payment','دفعات'],['expense','مصروفات'],['advance','سحبيات'],['salary','رواتب']];
+  A.innerHTML = `<div class="top"><h1>دفتر اليومية</h1></div><div class="chips">${types.map(([v, l]) => `<div class="chip ${S.lt === v ? 'on' : ''}" data-t="${v}">${l}</div>`).join('')}</div>
+  <div class="card">${S.ledger.filter(l => !S.lt || l.type === S.lt).slice(0, 200).map(txRow).join('') || '<p class="hint">لا توجد حركات</p>'}</div>`;
+  A.querySelectorAll('[data-t]').forEach(b => b.onclick = () => { S.lt = b.dataset.t; ledgerView(); });
 }
 
-/* ===== PDF ===== */
-function exportPDF(title,html){
-  const box=document.createElement('div');box.style.cssText='font-family:Tahoma,Arial;direction:rtl;padding:20px;color:#111;background:#fff;width:760px';
-  box.innerHTML=`<h2 style="color:#14283b;text-align:center;margin:0">${esc(S.settings.name)}</h2><h3 style="text-align:center;margin:6px 0 18px">${esc(title)}</h3>${html}<div style="margin-top:28px;text-align:center;font-size:11px;color:#888">تم الإنشاء: ${new Date().toLocaleString('ar-EG')}</div>`;
+/* ============================================================
+   24) PDF
+   ============================================================ */
+const LIBS = { qr: ['https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js', () => window.QRCode], chart: ['https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js', () => window.Chart], pdf: ['https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js', () => window.html2pdf] };
+const _lp = {};
+const need = k => { const [u, t] = LIBS[k]; if (t()) return Promise.resolve(); return _lp[k] || (_lp[k] = new Promise((ok, no) => { const e = document.createElement('script'); e.src = u; e.onload = ok; e.onerror = () => { delete _lp[k]; no(); }; document.head.appendChild(e); })); };
+function exportPDF(title, html) {
+  const box = document.createElement('div'); box.style.cssText = 'font-family:Tahoma,Arial;direction:rtl;padding:20px;color:#111;background:#fff;width:760px';
+  box.innerHTML = `<h2 style="color:#14283b;text-align:center;margin:0">${esc(S.settings.name)}</h2><h3 style="text-align:center;margin:6px 0 18px">${esc(title)}</h3>${html}<div style="margin-top:28px;text-align:center;font-size:11px;color:#888">تم الإنشاء: ${new Date().toLocaleString('ar-EG')}</div>`;
   document.body.appendChild(box);
-  need('pdf').then(()=>html2pdf().set({margin:10,filename:title.replace(/[^\w\u0600-\u06FF]+/g,'_')+'.pdf',html2canvas:{scale:2,useCORS:true},jsPDF:{unit:'mm',format:'a4',orientation:'portrait'}}).from(box).save().then(()=>box.remove()).catch(()=>{box.remove();toast('تعذّر التصدير')})).catch(()=>{box.remove();toast('تعذّر تحميل المكتبة — تحقق من الاتصال')});
+  need('pdf').then(() => html2pdf().set({ margin: 10, filename: title.replace(/[^\w\u0600-\u06FF]+/g, '_') + '.pdf', html2canvas: { scale: 2, useCORS: true }, jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' } }).from(box).save().then(() => box.remove()).catch(() => { box.remove(); toast('تعذّر التصدير'); })).catch(() => { box.remove(); toast('تعذّر تحميل المكتبة — تحقق من الاتصال'); });
 }
-const tbl=(h,r)=>`<table border="1" cellspacing="0" cellpadding="6" style="width:100%;border-collapse:collapse;font-size:12px"><tr style="background:#eef3f0">${h.map(x=>`<th>${x}</th>`).join('')}</tr>${r||`<tr><td colspan="${h.length}">لا توجد حركات</td></tr>`}</table>`;
-function statementPDF(ent,txs,kind){
-  exportPDF((kind==='customer'?'كشف حساب عميل - ':'كشف حساب مورد - ')+ent.name,tbl(['التاريخ','البيان','ملاحظة','المبلغ'],txs.map(l=>`<tr><td>${dOnly(l.ts)}</td><td>${esc(l.label)}</td><td>${esc(l.note||'')}</td><td style="color:${l.dir==='in'?'#1f9d6b':'#e5484d'}">${l.dir==='in'?'+':'-'}${n2(l.amount)}</td></tr>`).join(''))+`<h3 style="margin-top:14px">الرصيد الحالي: ${fmt(ent.balance||0)}</h3>`);
+const tbl = (h, r) => `<table border="1" cellspacing="0" cellpadding="6" style="width:100%;border-collapse:collapse;font-size:12px"><tr style="background:#eef3f0">${h.map(x => `<th>${x}</th>`).join('')}</tr>${r || `<tr><td colspan="${h.length}">لا توجد حركات</td></tr>`}</table>`;
+function statementPDF(ent, txs, kind) {
+  exportPDF((kind === 'customer' ? 'كشف حساب عميل - ' : 'كشف حساب مورد - ') + ent.name,
+    tbl(['التاريخ','البيان','ملاحظة','المبلغ'], txs.map(l => `<tr><td>${dOnly(l.ts)}</td><td>${esc(l.label)}</td><td>${esc(l.note || '')}</td><td style="color:${l.dir === 'in' ? '#1f9d6b' : '#e5484d'}">${l.dir === 'in' ? '+' : '-'}${n2(l.amount)}</td></tr>`).join('')) +
+    `<h3 style="margin-top:14px">الرصيد الحالي: ${fmt(ent.balance || 0)}</h3>`);
 }
-function employeeStatementPDF(emp,txs){
-  exportPDF('كشف حساب موظف - '+emp.name,`<p style="font-size:13px;margin-bottom:10px"><b>الوظيفة:</b> ${esc(emp.position||'—')} &nbsp; <b>الراتب:</b> ${fmt(emp.salary||0)}</p>`+tbl(['التاريخ','البيان','ملاحظة','المبلغ'],txs.map(l=>`<tr><td>${dOnly(l.ts)}</td><td>${esc(l.label)}</td><td>${esc(l.note||'')}</td><td>${n2(l.amount)}</td></tr>`).join(''))+`<h3 style="margin-top:14px">الرصيد: ${fmt(emp.balance||0)}</h3>`);
+function employeeStatementPDF(emp, txs) {
+  exportPDF('كشف حساب موظف - ' + emp.name, `<p style="font-size:13px;margin-bottom:10px"><b>الوظيفة:</b> ${esc(emp.position || '—')} &nbsp; <b>الراتب:</b> ${fmt(emp.salary || 0)}</p>` +
+    tbl(['التاريخ','البيان','ملاحظة','المبلغ'], txs.map(l => `<tr><td>${dOnly(l.ts)}</td><td>${esc(l.label)}</td><td>${esc(l.note || '')}</td><td>${n2(l.amount)}</td></tr>`).join('')) +
+    `<h3 style="margin-top:14px">الرصيد: ${fmt(emp.balance || 0)}</h3>`);
 }
-function invoicePDF(rec,kind){
-  const sl=kind==='sale',party=sl?(rec.customerName||'عميل نقدي'):(rec.supplierName||'مورد نقدي');
-  exportPDF((sl?'فاتورة بيع':'فاتورة شراء')+' رقم '+(rec.id||'').slice(-6).toUpperCase(),
-  `<div style="display:flex;justify-content:space-between;margin-bottom:14px;font-size:13px"><div><b>${sl?'العميل':'المورد'}:</b> ${esc(party)}</div><div><b>التاريخ:</b> ${dt(rec.ts)}</div></div>
-  ${tbl(['#','الصنف','الكمية','السعر','الإجمالي'],rec.items.map((i,x)=>`<tr><td>${x+1}</td><td>${esc(i.name)}</td><td>${n2(i.qty)}</td><td>${n2(i.price)}</td><td>${n2(i.qty*i.price)}</td></tr>`).join('')+`<tr style="font-weight:bold"><td colspan="4">الإجمالي</td><td>${fmt(rec.total)}</td></tr><tr><td colspan="4">المدفوع</td><td>${fmt(rec.paid)}</td></tr>${rec.due>0?`<tr><td colspan="4">المتبقي (آجل)</td><td style="color:#e5484d;font-weight:bold">${fmt(rec.due)}</td></tr>`:''}`)}
-  <p style="margin-top:20px;text-align:center;font-size:12px;color:#6b7b72">شكراً لتعاملكم معنا 🌹<br>${esc(S.settings.name)} ${S.settings.phone?'· '+esc(S.settings.phone):''}</p>`);
+function invoicePDF(rec, kind) {
+  const sl = kind === 'sale', party = sl ? (rec.customerName || 'عميل نقدي') : (rec.supplierName || 'مورد نقدي');
+  exportPDF((sl ? 'فاتورة بيع' : 'فاتورة شراء') + ' رقم ' + (rec.id || '').slice(-6).toUpperCase(),
+    `<div style="display:flex;justify-content:space-between;margin-bottom:14px;font-size:13px"><div><b>${sl ? 'العميل' : 'المورد'}:</b> ${esc(party)}</div><div><b>التاريخ:</b> ${dt(rec.ts)}</div></div>
+    ${tbl(['#','الصنف','الكمية','السعر','الإجمالي'], rec.items.map((i, x) => `<tr><td>${x + 1}</td><td>${esc(i.name)}</td><td>${n2(i.qty)}</td><td>${n2(i.price)}</td><td>${n2(i.qty * i.price)}</td></tr>`).join('') +
+      `<tr style="font-weight:bold"><td colspan="4">الإجمالي</td><td>${fmt(rec.total)}</td></tr><tr><td colspan="4">المدفوع</td><td>${fmt(rec.paid)}</td></tr>${rec.due > 0 ? `<tr><td colspan="4">المتبقي (آجل)</td><td style="color:#e5484d;font-weight:bold">${fmt(rec.due)}</td></tr>` : ''}`)}
+    <p style="margin-top:20px;text-align:center;font-size:12px;color:#6b7b72">شكراً لتعاملكم معنا 🌹<br>${esc(S.settings.name)} ${S.settings.phone ? '· ' + esc(S.settings.phone) : ''}</p>`);
 }
 
-/* ===== واجهة العميل العامة ===== */
-function publicView(tk){
-  N.innerHTML='';
-  A.innerHTML=`<div style="text-align:center;padding:18px 0 6px"><img class="lg" src="icon-192.png" alt=""><h1>كشف حساب</h1><small id="pub-store">جاري التحميل...</small></div>
-  <div class="card nc" id="notifCard"></div>
+/* ============================================================
+   25) صفحة الزبون العامة (QR)
+   ============================================================ */
+function publicView(tk) {
+  N.innerHTML = '';
+  A.innerHTML = `<div style="text-align:center;padding:18px 0 6px"><img class="lg" src="icon-192.png" alt=""><h1>كشف حساب</h1><small id="pub-store">جاري التحميل...</small></div>
   <div class="hero" id="acc" style="text-align:center"><small>جاري تحميل البيانات...</small></div>
   <div class="g2" id="pub-summary" style="display:none"><div class="stat"><div class="l">إجمالي الديون</div><div class="n due" id="pub-debt">0</div></div><div class="stat"><div class="l">إجمالي الدفعات</div><div class="n ok" id="pub-pay">0</div></div></div>
   <div class="sec">سجل الحركات</div><div class="card" id="txs"><p class="hint">لا توجد حركات بعد</p></div>
   <button class="btn w" onclick="window.print()">🖨️ طباعة / حفظ PDF</button>`;
-  refreshPubNotifCard();
-  onSnapshot(doc(db,'accounts',tk),s=>{
-    if(!s.exists()){$('#acc').innerHTML='<small>الرابط غير صحيح.</small>';return}
-    const a=s.data(),b=a.balance||0;$('#pub-store').textContent=S.settings.name||'كشف حسابي';
-    $('#acc').innerHTML=`<div class="av" style="margin:0 auto 8px;width:58px;height:58px;background:rgba(255,255,255,.12);color:#fff">${esc(initials(a.name))}</div><h2>${esc(a.name)}</h2>
-    <div class="big" style="margin:6px 0">${n2(Math.abs(b))} ${esc(a.currency||'')}</div><small>${b>0?'المبلغ المطلوب منك':b<0?'رصيد لك':'الحساب مسدد ✅'}</small>`});
-  const pt=arr=>arr.map(d=>{const x=d.data?d.data():d;return{id:d.id,amount:Number(x.amount)||0,label:x.label||(x.type==='debt'?'دين':'دفعة'),note:x.note||'',ts:x.ts||Date.now(),dir:x.dir||(x.type==='debt'?'out':'in')}});
-  const all={l:[],o:[]};
-  const rt=()=>{const m=[...all.l,...all.o].sort((a,b)=>b.ts-a.ts);
-    $('#pub-debt').textContent=fmt(sum(m.filter(t=>t.dir==='out'),t=>t.amount));$('#pub-pay').textContent=fmt(sum(m.filter(t=>t.dir==='in'),t=>t.amount));
-    $('#pub-summary').style.display=m.length?'grid':'none';
-    $('#txs').innerHTML=m.map(t=>`<div class="tx"><div><b style="font-size:.88rem">${esc(t.label)}</b><br><small>${dt(t.ts)} ${t.note?'· '+esc(t.note):''}</small></div><b class="${t.dir==='in'?'ok':'due'}">${t.dir==='in'?'−':'+'}${n2(t.amount)}</b></div>`).join('')||'<p class="hint">لا توجد حركات مسجلة بعد</p>'};
-  onSnapshot(query(collection(db,'ledger'),where('accountId','==',tk)),s=>{all.l=pt(s.docs);rt()});
-  onSnapshot(query(collection(db,'accounts',tk,'tx'),orderBy('ts','desc')),s=>{all.o=pt(s.docs);rt()},e=>console.log('no old tx'));
-}
-function refreshPubNotifCard(){
-  const card=$('#notifCard');if(!card)return;
-  if(!(('Notification' in window)&&('serviceWorker' in navigator)&&('PushManager' in window))){card.style.display='none';return}
-  const p=Notification.permission;
-  if(p==='granted'){card.innerHTML='<span class="bell">🔔</span><h3>الإشعارات مُفعّلة ✅</h3><p>ستصلك الفواتير والدفعات لحظة تسجيلها</p>';return}
-  if(p==='denied'){card.innerHTML='<span class="bell">🔕</span><h3>الإشعارات محظورة</h3><p>فعّلها من إعدادات المتصفح لهذا الموقع</p>';return}
-  card.innerHTML='<span class="bell">🔔</span><h3>فعّل الإشعارات</h3><p>لتصلك الفواتير والدفعات لحظة تسجيلها على حسابك</p><button id="pubNotifBtn">✅ تفعيل الإشعارات الآن</button>';
-  $('#pubNotifBtn').onclick=()=>activateCustomerNotifications(new URLSearchParams(location.search).get('c'));
-}
-async function activateCustomerNotifications(tk){
-  if(!(('Notification' in window)&&('serviceWorker' in navigator)&&('PushManager' in window)))return alert('متصفحك لا يدعم الإشعارات.\nاستخدم Chrome أو Safari حديث.');
-  if(/iPad|iPhone|iPod/.test(navigator.userAgent)&&!(window.matchMedia('(display-mode: standalone)').matches||window.navigator.standalone===true))
-    return alert('لتشغيل الإشعارات على iPhone:\n\n1) اضغط زر المشاركة 📤 في Safari\n2) اختر "إضافة إلى الشاشة الرئيسية"\n3) افتح التطبيق من الأيقونة الجديدة\n4) اضغط "تفعيل" مرة أخرى');
-  const btn=$('#pubNotifBtn');if(btn){btn.disabled=true;btn.textContent='⏳ جارٍ التفعيل...'}
-  try{
-    if(typeof window.enablePushNotifications==='function'){await window.enablePushNotifications();setTimeout(refreshPubNotifCard,800);toast('✅ تم تفعيل الإشعارات بنجاح')}
-    else{const perm=await Notification.requestPermission();toast(perm==='granted'?'✅ تم منح الإذن — أعد تحميل الصفحة':'❌ تم رفض الإشعارات');refreshPubNotifCard()}
-  }catch(e){console.error(e);toast('تعذّر تفعيل الإشعارات');if(btn){btn.disabled=false;btn.textContent='✅ تفعيل الإشعارات الآن'}}
+  // في الوضع المحلي، اجلب من Firestore فقط إذا كان المستخدم مسجلاً
+  if (!window._db) { $('#acc').innerHTML = '<small>هذه الصفحة تحتاج اتصالاً بالسحابة.</small>'; return; }
+  window._fbmod.onSnapshot(window._fbmod.doc(window._db, 'accounts', tk), s => {
+    if (!s.exists()) { $('#acc').innerHTML = '<small>الرابط غير صحيح.</small>'; return; }
+    const a = s.data(), b = a.balance || 0; $('#pub-store').textContent = a.owner || 'كشف حسابي';
+    $('#acc').innerHTML = `<div class="av" style="margin:0 auto 8px;width:58px;height:58px;background:rgba(255,255,255,.12);color:#fff">${esc(initials(a.name))}</div><h2>${esc(a.name)}</h2>
+    <div class="big" style="margin:6px 0">${n2(Math.abs(b))} ${esc(a.currency || '')}</div><small>${b > 0 ? 'المبلغ المطلوب منك' : b < 0 ? 'رصيد لك' : 'الحساب مسدد ✅'}</small>`;
+  });
+  const pt = arr => arr.map(d => { const x = d.data ? d.data() : d; return { amount: Number(x.amount) || 0, label: x.label || (x.type === 'debt' ? 'دين' : 'دفعة'), note: x.note || '', ts: x.ts || Date.now(), dir: x.dir || (x.type === 'debt' ? 'out' : 'in') }; });
+  const { query, collection, where, orderBy } = window._fbmod;
+  window._fbmod.onSnapshot(query(collection(window._db, 'ledger'), where('accountId', '==', tk)), s => {
+    const m = pt(s.docs).sort((a, b) => b.ts - a.ts);
+    $('#pub-debt').textContent = fmt(sum(m.filter(t => t.dir === 'out'), t => t.amount));
+    $('#pub-pay').textContent = fmt(sum(m.filter(t => t.dir === 'in'), t => t.amount));
+    $('#pub-summary').style.display = m.length ? 'grid' : 'none';
+    $('#txs').innerHTML = m.map(t => `<div class="tx"><div><b style="font-size:.88rem">${esc(t.label)}</b><br><small>${dt(t.ts)} ${t.note ? '· ' + esc(t.note) : ''}</small></div><b class="${t.dir === 'in' ? 'ok' : 'due'}">${t.dir === 'in' ? '−' : '+'}${n2(t.amount)}</b></div>`).join('') || '<p class="hint">لا توجد حركات مسجلة بعد</p>';
+  });
 }
 
-/* ===== التهيئة ===== */
-try{Object.assign(S.settings,JSON.parse(localStorage.st||'{}'))}catch(e){}
-async function loadSettings(){try{const d=await getDoc(doc(db,'settings',S.user.uid));if(d.exists()){S.settings={...S.settings,...d.data()};try{localStorage.st=JSON.stringify(S.settings)}catch(e){}}}catch(e){}}
-function attach(){
-  S.unsubs.forEach(u=>u());S.unsubs=[];const u=S.user.uid;
-  const sub=(col,cb)=>S.unsubs.push(onSnapshot(query(collection(db,col),where('owner','==',u)),s=>{cb(s.docs.map(d=>({id:d.id,...d.data()})));if(!S.formOpen)render()}));
-  const byTs=d=>d.sort((a,b)=>b.ts-a.ts);
-  sub('accounts',d=>S.customers=d);sub('suppliers',d=>S.suppliers=d);sub('products',d=>S.products=d);
-  sub('sales',d=>S.sales=byTs(d));sub('purchases',d=>S.purchases=byTs(d));sub('expenses',d=>S.expenses=byTs(d));sub('ledger',d=>S.ledger=byTs(d));
-  sub('employees',d=>S.employees=d.sort((a,b)=>a.name.localeCompare(b.name)));
+/* ============================================================
+   26) Firebase (اختياري — فقط للمزامنة السحابية)
+   ============================================================ */
+let _fbInit = null;
+async function initFirebase() {
+  if (_fbInit) return _fbInit;
+  _fbInit = (async () => {
+    const { initializeApp } = await import("https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js");
+    const authMod = await import("https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js");
+    const fsMod = await import("https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js");
+    const fb = initializeApp({ apiKey: "AIzaSyDaLsIF93OD-Lr9y51j_s4wB9OzahLUiTQ", authDomain: "grocery-debts.firebaseapp.com", projectId: "grocery-debts", storageBucket: "grocery-debts.firebasestorage.app", messagingSenderId: "484535933298", appId: "1:484535933298:web:87f8e2ea08a6d26231e5eb" });
+    const auth = authMod.getAuth(fb);
+    let db;
+    try { db = fsMod.initializeFirestore(fb, { localCache: fsMod.persistentLocalCache({ tabManager: fsMod.persistentMultipleTabManager() }) }); } catch { db = fsMod.getFirestore(fb); }
+    window._fb = fb; window._db = db; window._auth = auth;
+    window._fbmod = { ...fsMod, ...authMod, doc: fsMod.doc, setDoc: fsMod.setDoc, deleteDoc: fsMod.deleteDoc, collection: fsMod.collection, query: fsMod.query, where: fsMod.where, orderBy: fsMod.orderBy, onSnapshot: fsMod.onSnapshot };
+    return { fb, auth, db, fsMod, authMod };
+  })();
+  return _fbInit;
 }
-if('serviceWorker' in navigator)navigator.serviceWorker.register('sw.js').catch(()=>{});
-const tk=new URLSearchParams(location.search).get('c');
-if(tk)publicView(tk);
-else onAuthStateChanged(auth,async u=>{S.user=u;if(u){loadSettings().then(()=>{if(!S.formOpen)render()});attach();render()}else{S.unsubs.forEach(x=>x());S.unsubs=[];render()}});
+
+/* ============================================================
+   27) Login (اختياري)
+   ============================================================ */
+function authErr(e) {
+  const m = { 'auth/invalid-email': 'البريد غير صحيح', 'auth/user-not-found': 'لا يوجد حساب', 'auth/wrong-password': 'كلمة المرور خاطئة', 'auth/invalid-credential': 'البريد أو كلمة المرور خطأ', 'auth/email-already-in-use': 'البريد مستخدم', 'auth/weak-password': 'كلمة المرور قصيرة', 'auth/too-many-requests': 'حاول لاحقاً', 'auth/network-request-failed': 'تعذّر الاتصال', 'auth/popup-closed-by-user': 'أُغلقت النافذة', 'auth/popup-blocked': 'المتصفح منع النافذة', 'auth/missing-name': 'اكتب اسمك' };
+  return m[e?.code] || ('خطأ: ' + (e?.code || ''));
+}
+function loginView() {
+  const reg = S._authTab === 'register';
+  A.innerHTML = `<div class="top"><button class="btn g sm" id="bk">→ رجوع</button></div>
+  <div style="text-align:center;padding:20px 0 12px"><img class="lg" src="icon-192.png" alt=""><h1>المزامنة السحابية</h1><small>بياناتك محفوظة على هاتفك دائماً. التسجيل اختياري فقط لمزامنة الأجهزة.</small></div>
+  <div class="card"><div class="row" style="margin-bottom:10px"><button class="btn ${reg ? 'g' : ''} w" id="tl">دخول</button><button class="btn ${reg ? '' : 'g'} w" id="tr">حساب جديد</button></div>
+  ${reg ? '<label>الاسم الكامل</label><input id="a-name">' : ''}
+  <label>البريد الإلكتروني</label><input id="a-email" type="email" autocomplete="email">
+  <label>كلمة المرور</label><input id="a-pass" type="password" autocomplete="current-password">
+  <button class="btn am w" id="a-go" style="margin-top:12px">${reg ? 'إنشاء الحساب' : 'تسجيل الدخول'}</button>
+  ${reg ? '' : '<div style="text-align:center;margin-top:10px"><a id="a-forgot" style="font-size:.82rem;cursor:pointer">نسيت كلمة المرور؟</a></div>'}
+  <div class="hint">أو</div><button class="btn o w" id="g">المتابعة بحساب جوجل</button></div>
+  <div class="card" style="background:#fff8e6;border-color:#f0c674"><small>💡 بعد تسجيل الدخول، ستُرفع بياناتك المحلية تلقائياً للسحابة ويمكنك استرجاعها من أي جهاز.</small></div>`;
+  $('#bk').onclick = () => history.back();
+  $('#tl').onclick = () => { S._authTab = 'login'; loginView(); };
+  $('#tr').onclick = () => { S._authTab = 'register'; loginView(); };
+  $('#a-go').onclick = async () => {
+    const email = $('#a-email').value.trim(), pass = $('#a-pass').value;
+    if (!email || !pass) return toast('أدخل البريد وكلمة المرور');
+    $('#a-go').disabled = true;
+    try {
+      const { auth, authMod } = await initFirebase();
+      await authMod.setPersistence(auth, authMod.browserLocalPersistence);
+      if (reg) {
+        const name = $('#a-name').value.trim(); if (!name) throw { code: 'auth/missing-name' };
+        const cr = await authMod.createUserWithEmailAndPassword(auth, email, pass);
+        const { setDoc, doc } = window._fbmod;
+        await setDoc(doc(window._db, 'settings', cr.user.uid), { name, currency: 'ر.ي', phone: '', address: '', autoWhatsApp: true }, { merge: true });
+      } else {
+        await authMod.signInWithEmailAndPassword(auth, email, pass);
+      }
+      toast('✅ تم الدخول — جارٍ المزامنة');
+      S.view = 'dashboard'; history.pushState({ __app: true, view: 'dashboard' }, ''); render();
+    } catch (e) { $('#a-go').disabled = false; toast(authErr(e)); }
+  };
+  $('#a-pass').addEventListener('keydown', e => { if (e.key === 'Enter') $('#a-go').click(); });
+  if ($('#a-forgot')) $('#a-forgot').onclick = async () => {
+    const em = $('#a-email').value.trim(); if (!em) return toast('اكتب بريدك');
+    try { const { auth, authMod } = await initFirebase(); await authMod.sendPasswordResetEmail(auth, em); toast('تم إرسال رابط الاستعادة'); } catch (e) { toast(authErr(e)); }
+  };
+  $('#g').onclick = async () => {
+    try {
+      const { auth, authMod } = await initFirebase();
+      await authMod.setPersistence(auth, authMod.browserLocalPersistence);
+      await authMod.signInWithPopup(auth, new authMod.GoogleAuthProvider());
+    } catch (e) { toast(authErr(e)); }
+  };
+}
+async function logout() {
+  if (!confirm('هل تريد تسجيل الخروج؟ (بياناتك تبقى على الهاتف)')) return;
+  try { const { auth, authMod } = await initFirebase(); await authMod.signOut(auth); toast('تم الخروج'); S.view = 'dashboard'; history.pushState({ __app: true, view: 'dashboard' }, ''); render(); } catch (e) { toast('تعذّر الخروج'); }
+}
+
+/* ============================================================
+   28) الإقلاع
+   ============================================================ */
+try { Object.assign(S.settings, JSON.parse(localStorage.st || '{}')); } catch {}
+try { Object.assign(S.settings, JSON.parse(localStorage.st || '{}')); } catch {}
+
+(async () => {
+  // 1) اقرأ من IndexedDB أولاً — التطبيق يعمل فوراً
+  await loadAll();
+  S._loaded = true;
+
+  // 2) هيّئ الـ Nav (Back Button)
+  Nav.init();
+
+  // 3) هيّئ Firebase بالخلفية (اختياري — لا يعطّل التطبيق)
+  initFirebase().then(async ({ auth, authMod }) => {
+    authMod.onAuthStateChanged(auth, async u => {
+      window._user = u;
+      S.user = u;
+      if (u) {
+        // ارفع أي عمليات محلية معلّقة
+        await Cloud.flush();
+      }
+      render();
+    });
+  }).catch(() => { render(); });
+
+  // 4) ارسم فوراً بالبيانات المحلية
+  render();
+
+  // 5) Service Worker
+  if ('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js').catch(() => {});
+})();
+
+// QR public view (لو فيه ?c=)
+const tk = new URLSearchParams(location.search).get('c');
+if (tk) { initFirebase().then(() => publicView(tk)).catch(() => { A.innerHTML = '<p class="hint">يتطلب هذا الرابط اتصالاً بالإنترنت.</p>'; }); }
+
+// اختصارات لوحة المفاتيح
+window.addEventListener('keydown', e => { if (e.key === 'Escape' && $('#modal').classList.contains('open')) closeModal(); });
 </script>
 </body>
 </html>
