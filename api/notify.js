@@ -29,8 +29,13 @@ module.exports=async(req,res)=>{
     if(!a.ok)return res.status(404).json({error:'account'});
     if((await a.json()).fields?.owner?.stringValue!==uid)return res.status(403).json({error:'owner'});
 
-    const s=await fetch(`${FS}/accounts/${token}/subs`,{headers:H});
-    const docs=(await s.json()).documents||[];
+    // قراءة كل الاشتراكات (بدل أول 20 فقط)
+    let docs=[],pt='';
+    do{
+      const s=await fetch(`${FS}/accounts/${token}/subs?pageSize=300${pt?'&pageToken='+encodeURIComponent(pt):''}`,{headers:H});
+      if(!s.ok){console.error('subs list',s.status,await s.text());return res.status(502).json({error:'subs',status:s.status})}
+      const j=await s.json();docs=docs.concat(j.documents||[]);pt=j.nextPageToken||'';
+    }while(pt);
 
     webpush.setVapidDetails(
       process.env.VAPID_SUBJECT||'mailto:admin@example.com',
@@ -44,8 +49,7 @@ module.exports=async(req,res)=>{
       url:`https://${req.headers.host}/?c=${token}`
     });
 
-    // urgency:high يوقظ الجهاز فوراً حتى في وضع السكون (Doze)
-    // TTL:86400 يُبقي الإشعار 24 ساعة إن كان الجهاز مطفأً أو بلا إنترنت
+    // urgency:high يوقظ الجهاز فوراً، وTTL يُبقي الإشعار 24 ساعة إن كان الجهاز مطفأً
     const opts={TTL:86400,urgency:'high'};
 
     let sent=0,failed=0,removed=0;
