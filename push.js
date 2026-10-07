@@ -44,17 +44,22 @@ if(token){
 /* تفعيل الإشعارات */
 const u8=s=>Uint8Array.from(atob(s.replace(/-/g,'+').replace(/_/g,'/')),c=>c.charCodeAt(0));
 const sha=async s=>[...new Uint8Array(await crypto.subtle.digest('SHA-256',new TextEncoder().encode(s)))].map(b=>b.toString(16).padStart(2,'0')).join('');
+const b64url=buf=>btoa(String.fromCharCode(...new Uint8Array(buf))).replace(/\+/g,'-').replace(/\//g,'_').replace(/=+$/,'');
 
 async function subscribe(){
   const reg=await navigator.serviceWorker.register('sw.js');
   await navigator.serviceWorker.ready;
   const{key}=await(await fetch('/api/notify')).json();
-  const old=await reg.pushManager.getSubscription();
-  if(old){
-    try{await deleteDoc(doc(db,'accounts',token,'subs',await sha(old.endpoint)))}catch(e){}
-    await old.unsubscribe();
+  /* نُبقي الاشتراك الحالي إن كان صالحاً (نفس المفتاح)، ونجدّده فقط إذا تغيّر مفتاح VAPID */
+  let sub=await reg.pushManager.getSubscription();
+  const cur=sub&&sub.options&&sub.options.applicationServerKey;
+  const same=!cur||b64url(cur)===key.replace(/=+$/,'');
+  if(sub&&!same){
+    try{await deleteDoc(doc(db,'accounts',token,'subs',await sha(sub.endpoint)))}catch(e){}
+    await sub.unsubscribe();sub=null;
   }
-  const sub=await reg.pushManager.subscribe({userVisibleOnly:true,applicationServerKey:u8(key)});
+  if(!sub)sub=await reg.pushManager.subscribe({userVisibleOnly:true,applicationServerKey:u8(key)});
+  /* المعرّف ثابت (hash للـ endpoint) فلا تتراكم اشتراكات مكررة */
   await setDoc(doc(db,'accounts',token,'subs',await sha(sub.endpoint)),{sub:JSON.stringify(sub),ts:Date.now()});
 }
 
@@ -76,8 +81,8 @@ async function enable(b){
 }
 window.enablePushNotifications=enable;
 
-/* ترميم تلقائي: كلما فُتح الرابط والإذن ممنوح، يُجدَّد الاشتراك ويُحفظ من جديد
-   (يعالج الاشتراكات التي حُذفت أو انتهت صلاحيتها دون أن يشعر العميل) */
+/* ترميم تلقائي: كلما فُتح الرابط والإذن ممنوح، يُحفظ الاشتراك من جديد
+   (يعالج الاشتراكات التي حُذفت من السيرفر دون أن يشعر العميل) */
 if(token&&('serviceWorker' in navigator)&&('PushManager' in window)&&('Notification' in window)&&Notification.permission==='granted'){
   window.addEventListener('load',()=>setTimeout(()=>subscribe().catch(e=>console.error('resub',e)),1500));
 }
