@@ -1,5 +1,5 @@
 // sw.js — تخزين محلي + إشعارات
-const V='v3'; // غيّر الرقم (v2, v3...) عند كل تحديث كبير لإجبار تحديث الملفات
+const V='v5'; // غيّر الرقم عند كل تحديث كبير لإجبار تحديث الملفات
 const CORE=['/','/index.html','/manifest.json','/icon-192.png','/icon-512.png',
 'https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js',
 'https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js',
@@ -35,8 +35,10 @@ self.addEventListener('fetch',e=>{
   const r=e.request;if(r.method!=='GET')return;
   const u=new URL(r.url);
   if(u.pathname.startsWith('/api/')||u.hostname.endsWith('googleapis.com')||u.hostname.endsWith('firebaseapp.com')||u.hostname==='apis.google.com'||u.hostname==='wa.me')return;
+  // صفحة الإدارة لا تُخزَّن ولا تُستبدل بالتطبيق
+  if(u.pathname.endsWith('admin-panel.html'))return;
   e.respondWith(caches.open(V).then(async c=>{
-    const key=r.mode==='navigate'?'/index.html':r;
+    const key=r.mode==='navigate'&&(u.pathname==='/'||u.pathname==='/index.html')?'/index.html':r;
     const hit=await c.match(key);
     const net=fetch(r).then(res=>{if(res&&(res.ok||res.type==='opaque'))c.put(key,res.clone());return res}).catch(()=>null);
     if(hit){e.waitUntil(net);return clean(hit)}
