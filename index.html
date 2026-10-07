@@ -79,7 +79,7 @@ a.innerHTML='<div style="text-align:center;padding:70px 20px"><div style="font-s
 <script type="module">
 import{initializeApp}from"https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
 import{getAuth,GoogleAuthProvider,signInWithPopup,onAuthStateChanged,signOut,signInWithEmailAndPassword,createUserWithEmailAndPassword,sendPasswordResetEmail,setPersistence,browserLocalPersistence}from"https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
-import{getFirestore,initializeFirestore,persistentLocalCache,persistentMultipleTabManager,doc,setDoc,getDoc,collection,query,where,orderBy,onSnapshot,writeBatch,increment,updateDoc,deleteDoc}from"https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+import{getFirestore,initializeFirestore,persistentLocalCache,persistentMultipleTabManager,doc,setDoc,getDoc,collection,query,where,orderBy,onSnapshot,increment,updateDoc,deleteDoc}from"https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
 
 const fb=initializeApp({apiKey:"AIzaSyDaLsIF93OD-Lr9y51j_s4wB9OzahLUiTQ",authDomain:"grocery-debts.firebaseapp.com",projectId:"grocery-debts",storageBucket:"grocery-debts.firebasestorage.app",messagingSenderId:"484535933298",appId:"1:484535933298:web:87f8e2ea08a6d26231e5eb"});
 const auth=getAuth(fb);let db;
@@ -292,14 +292,28 @@ function customerForm(c){
   ${e?'':`<label>رصيد افتتاحي (دين سابق)</label><input id="op" type="number" placeholder="0">`}${btns()}${e?delBtn:''}`);
   $('#sv').onclick=async()=>{
     const name=$('#n').value.trim();if(!name)return toast('اكتب الاسم');
-    const d={name,phone:$('#ph').value.trim(),limit:Number($('#lm').value)||0};
-    if(e)await fire(updateDoc(doc(db,'accounts',c.id),d));
-    else{const t=newToken(),op=Number($('#op').value)||0,bt=writeBatch(db);
-      bt.set(doc(db,'accounts',t),{owner:S.user.uid,...d,balance:op,currency:S.settings.currency,createdAt:Date.now()});
-      if(op>0)bt.set(newLedgerRef(),ledgerData('debt','رصيد افتتاحي',op,'out',0,{accountId:t}));await fire(bt.commit())}
-    closeModal();okMsg('تم الحفظ');};
-  if(e)$('#dl').onclick=async()=>{if(!confirm('حذف العميل "'+c.name+'"؟'+((c.balance||0)!==0?'\nعليه رصيد '+n2(c.balance)+' — سيُحذف كشف حسابه من الرابط أيضاً.':'')))return;
-    await fire(deleteDoc(doc(db,'accounts',c.id)));closeModal();toast('تم الحذف')};
+    const btn=$('#sv');btn.disabled=true;btn.textContent='جارٍ الحفظ...';
+    try{
+      const d={name,phone:$('#ph').value.trim(),limit:Number($('#lm').value)||0};
+      if(e){
+        await setDoc(doc(db,'accounts',c.id),d,{merge:true});
+      }else{
+        const t=newToken(),op=Number($('#op').value)||0;
+        await setDoc(doc(db,'accounts',t),{owner:S.user.uid,...d,balance:op,currency:S.settings.currency,createdAt:Date.now()});
+        if(op>0)await setDoc(newLedgerRef(),ledgerData('debt','رصيد افتتاحي',op,'out',0,{accountId:t}));
+      }
+      closeModal();okMsg('تم الحفظ');
+    }catch(err){
+      console.error(err);
+      toast('تعذّر الحفظ: '+(err.code||err.message||''));
+      btn.disabled=false;btn.textContent='حفظ';
+    }
+  };
+  if(e)$('#dl').onclick=async()=>{
+    if(!confirm('حذف العميل "'+c.name+'"؟'+((c.balance||0)!==0?'\nعليه رصيد '+n2(c.balance)+' — سيُحذف كشف حسابه من الرابط أيضاً.':'')))return;
+    try{await deleteDoc(doc(db,'accounts',c.id));closeModal();toast('تم الحذف')}
+    catch(err){toast('تعذّر الحذف: '+(err.code||err.message||''))}
+  };
 }
 function suppliersList(){
   listPage({title:'الموردين',add:'+ مورد',onAdd:()=>supplierForm(),
@@ -313,12 +327,26 @@ function supplierForm(s){
   ${e?'':`<label>رصيد افتتاحي</label><input id="op" type="number" placeholder="0">`}${btns()}${e?delBtn:''}`);
   $('#sv').onclick=async()=>{
     const name=$('#n').value.trim();if(!name)return toast('اكتب الاسم');
-    if(e)await fire(updateDoc(doc(db,'suppliers',s.id),{name,phone:$('#ph').value.trim()}));
-    else{const op=Number($('#op').value)||0,t=newToken(),bt=writeBatch(db);
-      bt.set(doc(db,'suppliers',t),{owner:S.user.uid,name,phone:$('#ph').value.trim(),balance:op,createdAt:Date.now()});
-      if(op>0)bt.set(newLedgerRef(),ledgerData('purchase','رصيد افتتاحي مورد',op,'out',0,{supplierId:t}));await fire(bt.commit())}
-    closeModal();okMsg('تم الحفظ');};
-  if(e)$('#dl').onclick=async()=>{if(!confirm('حذف المورد "'+s.name+'"؟'))return;await fire(deleteDoc(doc(db,'suppliers',s.id)));closeModal();toast('تم الحذف')};
+    const btn=$('#sv');btn.disabled=true;btn.textContent='جارٍ الحفظ...';
+    try{
+      if(e){
+        await setDoc(doc(db,'suppliers',s.id),{name,phone:$('#ph').value.trim()},{merge:true});
+      }else{
+        const op=Number($('#op').value)||0,t=newToken();
+        await setDoc(doc(db,'suppliers',t),{owner:S.user.uid,name,phone:$('#ph').value.trim(),balance:op,createdAt:Date.now()});
+        if(op>0)await setDoc(newLedgerRef(),ledgerData('purchase','رصيد افتتاحي مورد',op,'out',0,{supplierId:t}));
+      }
+      closeModal();okMsg('تم الحفظ');
+    }catch(err){
+      console.error(err);toast('تعذّر الحفظ: '+(err.code||err.message||''));
+      btn.disabled=false;btn.textContent='حفظ';
+    }
+  };
+  if(e)$('#dl').onclick=async()=>{
+    if(!confirm('حذف المورد "'+s.name+'"؟'))return;
+    try{await deleteDoc(doc(db,'suppliers',s.id));closeModal();toast('تم الحذف')}
+    catch(err){toast('تعذّر الحذف: '+(err.code||err.message||''))}
+  };
 }
 function partyPage(kind){
   const cu=kind==='customer',id=cu?S.customerId:S.supplierId,e=(cu?S.customers:S.suppliers).find(x=>x.id===id);
@@ -342,9 +370,15 @@ function partyPage(kind){
 }
 async function delTx(l,ent,kind){
   if(!l||!confirm('حذف هذه الحركة ('+n2(l.amount)+')؟ سيُعاد احتساب الرصيد.'))return;
-  const delta=l.dir==='out'?-l.amount:l.amount,bt=writeBatch(db);
-  bt.delete(doc(db,'ledger',l.id));bt.update(doc(db,kind==='customer'?'accounts':'suppliers',ent.id),{balance:increment(delta)});
-  await fire(bt.commit());okMsg('تم حذف الحركة');
+  try{
+    const delta=l.dir==='out'?-l.amount:l.amount;
+    const col=kind==='customer'?'accounts':'suppliers';
+    await deleteDoc(doc(db,'ledger',l.id));
+    await setDoc(doc(db,col,ent.id),{balance:increment(delta)},{merge:true});
+    okMsg('تم حذف الحركة');
+  }catch(err){
+    console.error(err);toast('تعذّر الحذف: '+(err.code||err.message||''));
+  }
 }
 
 function amountForm(type,ent,kind){
@@ -361,15 +395,15 @@ function amountForm(type,ent,kind){
     if(isDebt&&isCust&&ent.limit>0&&newB>ent.limit&&!confirm('هذا الدين يتجاوز سقف العميل ('+n2(ent.limit)+'). هل تريد المتابعة؟'))return;
     const svBtn=$('#sv');svBtn.disabled=true;svBtn.textContent='جارٍ الحفظ...';$('#err').style.display='none';
     try{
-      const col=isCust?'accounts':'suppliers',extra=isCust?{accountId:ent.id}:{supplierId:ent.id},bt=writeBatch(db);
-      bt.set(newLedgerRef(),ledgerData(isDebt?'debt':'payment',isDebt?'دين':'دفعة',amount,isDebt?'out':'in',isDebt?0:(isCust?amount:-amount),{...extra,note:$('#nt').value.trim()}));
-      bt.update(doc(db,col,ent.id),{balance:increment(isDebt?amount:-amount)});
-      await fire(bt.commit());closeModal();okMsg('✅ تم التسجيل بنجاح');
+      const col=isCust?'accounts':'suppliers',extra=isCust?{accountId:ent.id}:{supplierId:ent.id};
+      await setDoc(newLedgerRef(),ledgerData(isDebt?'debt':'payment',isDebt?'دين':'دفعة',amount,isDebt?'out':'in',isDebt?0:(isCust?amount:-amount),{...extra,note:$('#nt').value.trim()}));
+      await setDoc(doc(db,col,ent.id),{balance:increment(isDebt?amount:-amount)},{merge:true});
+      closeModal();okMsg('✅ تم التسجيل بنجاح');
       const note=$('#nt').value.trim(),cur=S.settings.currency||'ر.ي',now=new Date();
       let m=`مرحباً ${ent.name} 👋\n`+(isDebt?`🔴 تم تسجيل دين جديد بقيمة: ${amount} ${cur}\n`:`🟢 تم تسجيل دفعة بقيمة: ${amount} ${cur}\n`);
       if(note)m+=`📝 ملاحظات: ${note}\n`;
       m+=`📊 إجمالي حسابك الحالي: ${newB} ${cur}\n📅 التاريخ: ${now.toLocaleDateString('ar-EG')} - ${now.toLocaleTimeString('ar-EG',{hour:'2-digit',minute:'2-digit'})}\n\n`+(isDebt?'شكراً لثقتكم بنا 🌹':'شكراً لالتزامكم بالسداد 💚');
-      if(isCust&&navigator.onLine&&window.notifyCustomer)window.notifyCustomer(ent.id,m,S.settings.name);
+      if(isCust&&navigator.onLine&&window.notifyCustomer)try{window.notifyCustomer(ent.id,m,S.settings.name)}catch(e){}
       if(isCust&&ent.phone)setTimeout(()=>notifyDebt(ent.name,ent.phone,amount,newB,isDebt?'debt':'payment'),450);
     }catch(e){console.error(e);$('#err').textContent='فشل: '+(e.code||e.message||'خطأ');$('#err').style.display='block';svBtn.disabled=false;svBtn.textContent='تأكيد'}};
 }
@@ -391,10 +425,22 @@ function productForm(p){
   <label>حد التنبيه</label><input id="mn" type="number" value="${p?.min??0}">${btns()}${e?delBtn:''}`);
   $('#sv').onclick=async()=>{
     const name=$('#n').value.trim();if(!name)return toast('اكتب الاسم');
-    const d={name,unit:$('#u').value.trim()||'حبة',stock:Number($('#st').value)||0,cost:Number($('#co').value)||0,price:Number($('#pr').value)||0,min:Number($('#mn').value)||0};
-    if(e)await fire(updateDoc(doc(db,'products',p.id),d));else await fire(setDoc(doc(collection(db,'products')),{owner:S.user.uid,...d,createdAt:Date.now()}));
-    closeModal();okMsg('تم الحفظ');};
-  if(e)$('#dl').onclick=async()=>{if(!confirm('حذف المنتج "'+p.name+'"؟'))return;await fire(deleteDoc(doc(db,'products',p.id)));closeModal();toast('تم الحذف')};
+    const btn=$('#sv');btn.disabled=true;btn.textContent='جارٍ الحفظ...';
+    try{
+      const d={name,unit:$('#u').value.trim()||'حبة',stock:Number($('#st').value)||0,cost:Number($('#co').value)||0,price:Number($('#pr').value)||0,min:Number($('#mn').value)||0};
+      if(e)await setDoc(doc(db,'products',p.id),d,{merge:true});
+      else await setDoc(doc(collection(db,'products')),{owner:S.user.uid,...d,createdAt:Date.now()});
+      closeModal();okMsg('تم الحفظ');
+    }catch(err){
+      console.error(err);toast('تعذّر الحفظ: '+(err.code||err.message||''));
+      btn.disabled=false;btn.textContent='حفظ';
+    }
+  };
+  if(e)$('#dl').onclick=async()=>{
+    if(!confirm('حذف المنتج "'+p.name+'"؟'))return;
+    try{await deleteDoc(doc(db,'products',p.id));closeModal();toast('تم الحذف')}
+    catch(err){toast('تعذّر الحذف: '+(err.code||err.message||''))}
+  };
 }
 
 /* ===== الفواتير ===== */
@@ -434,17 +480,34 @@ async function saveInv(kind){
   const sl=kind==='sale',pid=$('#party').value,p=(sl?S.customers:S.suppliers).find(x=>x.id===pid);
   const total=sum(S.cart,i=>i.qty*i.price),paid=Math.max(0,Math.min(Number($('#paid').value)||0,total)),due=total-paid;
   if(due>0&&!p)return toast(sl?'اختر عميلاً للبيع الآجل':'اختر مورداً للشراء الآجل');
-  const bt=writeBatch(db),ref=doc(collection(db,sl?'sales':'purchases')),idf=sl?'accountId':'supplierId',pc=sl?'accounts':'suppliers';
-  bt.set(ref,{owner:S.user.uid,ts:Date.now(),[sl?'customerId':'supplierId']:pid||null,[sl?'customerName':'supplierName']:p?.name||(sl?'عميل نقدي':'مورد نقدي'),
-    items:S.cart.map(i=>({id:i.id,name:i.name,qty:i.qty,price:i.price})),total,paid,due});
-  S.cart.forEach(i=>bt.update(doc(db,'products',i.id),sl?{stock:increment(-i.qty)}:{stock:increment(i.qty),cost:i.price}));
-  if(paid>0)bt.set(newLedgerRef(),ledgerData(sl?'sale':'purchase',sl?'فاتورة بيع':'فاتورة شراء',paid,sl?'in':'out',sl?paid:-paid,{ref:ref.id}));
-  if(due>0){bt.set(newLedgerRef(),ledgerData(sl?'sale':'purchase',sl?'فاتورة بيع آجل':'فاتورة شراء آجل',due,'out',0,{[idf]:pid,ref:ref.id}));bt.update(doc(db,pc,pid),{balance:increment(due)})}
+  const svBtn=$('#save');svBtn.disabled=true;svBtn.textContent='جارٍ الحفظ...';
+  const ref=doc(collection(db,sl?'sales':'purchases')),idf=sl?'accountId':'supplierId',pc=sl?'accounts':'suppliers';
+  const rec={owner:S.user.uid,ts:Date.now(),[sl?'customerId':'supplierId']:pid||null,[sl?'customerName':'supplierName']:p?.name||(sl?'عميل نقدي':'مورد نقدي'),
+    items:S.cart.map(i=>({id:i.id,name:i.name,qty:i.qty,price:i.price})),total,paid,due};
   const saved={id:ref.id,ts:Date.now(),[sl?'customerName':'supplierName']:p?.name||(sl?'عميل نقدي':'مورد نقدي'),items:[...S.cart],total,paid,due};
-  await fire(bt.commit());
-  S.formOpen=false;S.cart=[];okMsg('✅ تم حفظ الفاتورة');go(sl?'sales':'purchases',null,true);
-  setTimeout(()=>{modal(`<h2>تم حفظ الفاتورة ✅</h2><p style="margin:10px 0;font-size:.9rem">هل تريد طباعة الفاتورة؟</p><div class="row"><button class="btn o w" onclick="closeModal()">إغلاق</button><button class="btn w" id="pv">🖨️ طباعة PDF</button></div>`);
-    $('#pv').onclick=()=>{closeModal();invoicePDF(saved,kind)}},500);
+  try{
+    /* 1) الفاتورة */
+    await setDoc(ref,rec);
+    /* 2) المخزون بالتسلسل */
+    for(const i of S.cart){
+      try{
+        if(sl)await setDoc(doc(db,'products',i.id),{stock:increment(-i.qty)},{merge:true});
+        else await setDoc(doc(db,'products',i.id),{stock:increment(i.qty),cost:i.price},{merge:true});
+      }catch(e){console.warn('stock',e)}
+    }
+    /* 3) الحركات المالية */
+    if(paid>0)await setDoc(newLedgerRef(),ledgerData(sl?'sale':'purchase',sl?'فاتورة بيع':'فاتورة شراء',paid,sl?'in':'out',sl?paid:-paid,{ref:ref.id}));
+    if(due>0){
+      await setDoc(newLedgerRef(),ledgerData(sl?'sale':'purchase',sl?'فاتورة بيع آجل':'فاتورة شراء آجل',due,'out',0,{[idf]:pid,ref:ref.id}));
+      await setDoc(doc(db,pc,pid),{balance:increment(due)},{merge:true});
+    }
+    S.formOpen=false;S.cart=[];okMsg('✅ تم حفظ الفاتورة');go(sl?'sales':'purchases',null,true);
+    setTimeout(()=>{modal(`<h2>تم حفظ الفاتورة ✅</h2><p style="margin:10px 0;font-size:.9rem">هل تريد طباعة الفاتورة؟</p><div class="row"><button class="btn o w" onclick="closeModal()">إغلاق</button><button class="btn w" id="pv">🖨️ طباعة PDF</button></div>`);
+      $('#pv').onclick=()=>{closeModal();invoicePDF(saved,kind)}},500);
+  }catch(err){
+    console.error(err);toast('فشل حفظ الفاتورة: '+(err.code||err.message||''));
+    svBtn.disabled=false;svBtn.textContent='💾 حفظ الفاتورة';
+  }
 }
 
 /* ===== المصروفات ===== */
@@ -457,10 +520,19 @@ function expensesList(){
 function expenseForm(){
   modal(`<h2>مصروف جديد</h2><label>التصنيف</label><select id="cat">${['إيجار','رواتب','كهرباء','ماء','اتصالات','نقل','صيانة','أخرى'].map(x=>`<option>${x}</option>`).join('')}</select>
   <label>المبلغ *</label><input id="am" type="number" inputmode="decimal"><label>ملاحظة</label><input id="nt">${btns()}`);
-  $('#sv').onclick=async()=>{const amount=Number($('#am').value);if(!(amount>0))return toast('أدخل مبلغاً');
-    const cat=$('#cat').value,nt=$('#nt').value.trim(),bt=writeBatch(db);
-    bt.set(doc(collection(db,'expenses')),{owner:S.user.uid,ts:Date.now(),category:cat,amount,note:nt});
-    bt.set(newLedgerRef(),ledgerData('expense','مصروف: '+cat,amount,'out',-amount,{note:nt}));await fire(bt.commit());closeModal();okMsg('تم التسجيل')};
+  $('#sv').onclick=async()=>{
+    const amount=Number($('#am').value);if(!(amount>0))return toast('أدخل مبلغاً');
+    const btn=$('#sv');btn.disabled=true;btn.textContent='جارٍ الحفظ...';
+    try{
+      const cat=$('#cat').value,nt=$('#nt').value.trim();
+      await setDoc(doc(collection(db,'expenses')),{owner:S.user.uid,ts:Date.now(),category:cat,amount,note:nt});
+      await setDoc(newLedgerRef(),ledgerData('expense','مصروف: '+cat,amount,'out',-amount,{note:nt}));
+      closeModal();okMsg('تم التسجيل');
+    }catch(err){
+      console.error(err);toast('تعذّر الحفظ: '+(err.code||err.message||''));
+      btn.disabled=false;btn.textContent='حفظ';
+    }
+  };
 }
 
 /* ===== الموظفين ===== */
@@ -477,13 +549,27 @@ function employeeForm(emp){
   ${e?'':`<label>سحبيات سابقة</label><input id="op" type="number" placeholder="0">`}${btns()}${e?delBtn:''}`);
   $('#sv').onclick=async()=>{
     const name=$('#n').value.trim();if(!name)return toast('اكتب الاسم');
-    const d={name,position:$('#po').value.trim(),phone:$('#ph').value.trim(),salary:Number($('#sa').value)||0};
-    if(e)await fire(updateDoc(doc(db,'employees',emp.id),d));
-    else{const op=Number($('#op').value)||0,r=doc(collection(db,'employees')),bt=writeBatch(db);
-      bt.set(r,{owner:S.user.uid,...d,balance:op,createdAt:Date.now()});
-      if(op>0)bt.set(newLedgerRef(),ledgerData('advance','سحبيات سابقة',op,'out',-op,{employeeId:r.id}));await fire(bt.commit())}
-    closeModal();okMsg('تم الحفظ');};
-  if(e)$('#dl').onclick=async()=>{if(!confirm('حذف الموظف "'+emp.name+'"؟'))return;await fire(deleteDoc(doc(db,'employees',emp.id)));closeModal();toast('تم الحذف')};
+    const btn=$('#sv');btn.disabled=true;btn.textContent='جارٍ الحفظ...';
+    try{
+      const d={name,position:$('#po').value.trim(),phone:$('#ph').value.trim(),salary:Number($('#sa').value)||0};
+      if(e){
+        await setDoc(doc(db,'employees',emp.id),d,{merge:true});
+      }else{
+        const op=Number($('#op').value)||0,r=doc(collection(db,'employees'));
+        await setDoc(r,{owner:S.user.uid,...d,balance:op,createdAt:Date.now()});
+        if(op>0)await setDoc(newLedgerRef(),ledgerData('advance','سحبيات سابقة',op,'out',-op,{employeeId:r.id}));
+      }
+      closeModal();okMsg('تم الحفظ');
+    }catch(err){
+      console.error(err);toast('تعذّر الحفظ: '+(err.code||err.message||''));
+      btn.disabled=false;btn.textContent='حفظ';
+    }
+  };
+  if(e)$('#dl').onclick=async()=>{
+    if(!confirm('حذف الموظف "'+emp.name+'"؟'))return;
+    try{await deleteDoc(doc(db,'employees',emp.id));closeModal();toast('تم الحذف')}
+    catch(err){toast('تعذّر الحذف: '+(err.code||err.message||''))}
+  };
 }
 function employeePage(){
   const emp=S.employees.find(x=>x.id===S.employeeId);if(!emp)return go('employees',null,true);
@@ -502,12 +588,18 @@ function employeeAmountForm(type,emp){
     bonus:{title:'مكافأة',sub:'تخفيض المستحق عليه كمكافأة',sign:-1,cash:0,dir:'out'},deduction:{title:'خصم/جزاء',sub:'زيادة المستحق عليه كعقوبة',sign:1,cash:0,dir:'in'}}[type];
   modal(`<h2>${Lb.title} - ${esc(emp.name)}</h2><small>${Lb.sub}</small><label>المبلغ</label><input id="am" type="number" inputmode="decimal" placeholder="0" autofocus>
   <label>ملاحظة</label><input id="nt" placeholder="اختياري"><div id="err" style="color:var(--red);font-size:.8rem;display:none"></div>${btns('تأكيد')}`);
-  $('#sv').onclick=async()=>{const amount=Number($('#am').value);if(!(amount>0))return toast('أدخل مبلغاً صحيحاً');
+  $('#sv').onclick=async()=>{
+    const amount=Number($('#am').value);if(!(amount>0))return toast('أدخل مبلغاً صحيحاً');
     const b=$('#sv');b.disabled=true;b.textContent='جارٍ الحفظ...';
-    try{const bt=writeBatch(db);
-      bt.set(newLedgerRef(),ledgerData(type,Lb.title,amount,Lb.dir,Lb.cash*amount,{employeeId:emp.id,note:$('#nt').value.trim()}));
-      bt.update(doc(db,'employees',emp.id),{balance:increment(Lb.sign*amount)});await fire(bt.commit());closeModal();okMsg('✅ تم التسجيل')}
-    catch(e){console.error(e);$('#err').textContent='فشل: '+(e.code||e.message);$('#err').style.display='block';b.disabled=false;b.textContent='تأكيد'}};
+    try{
+      await setDoc(newLedgerRef(),ledgerData(type,Lb.title,amount,Lb.dir,Lb.cash*amount,{employeeId:emp.id,note:$('#nt').value.trim()}));
+      await setDoc(doc(db,'employees',emp.id),{balance:increment(Lb.sign*amount)},{merge:true});
+      closeModal();okMsg('✅ تم التسجيل');
+    }catch(err){
+      console.error(err);$('#err').textContent='فشل: '+(err.code||err.message);$('#err').style.display='block';
+      b.disabled=false;b.textContent='تأكيد';
+    }
+  };
 }
 
 /* ===== التقارير ===== */
@@ -595,21 +687,13 @@ function publicView(tk){
   onSnapshot(query(collection(db,'ledger'),where('accountId','==',tk)),s=>{all.l=pt(s.docs);rt()});
   onSnapshot(query(collection(db,'accounts',tk,'tx'),orderBy('ts','desc')),s=>{all.o=pt(s.docs);rt()},e=>console.log('no old tx'));
 }
-
-/* ✅ بطاقة الإشعارات - تُظهر الحالة الفعلية */
 function refreshPubNotifCard(){
   const card=$('#notifCard');if(!card)return;
   card.style.display='';
   const supported=('Notification' in window)&&('serviceWorker' in navigator)&&('PushManager' in window);
-  if(!supported){
-    card.innerHTML='<span class="bell">🔕</span><h3>الإشعارات غير مدعومة</h3><p>استخدم Chrome أو Safari حديث</p>';
-    return;
-  }
+  if(!supported){card.innerHTML='<span class="bell">🔕</span><h3>الإشعارات غير مدعومة</h3><p>استخدم Chrome أو Safari حديث</p>';return}
   const p=Notification.permission;
-  if(p==='granted'){
-    card.innerHTML='<span class="bell">🔔</span><h3>الإشعارات مُفعّلة ✅</h3><p>ستصلك الفواتير والدفعات لحظة تسجيلها</p>';
-    return;
-  }
+  if(p==='granted'){card.innerHTML='<span class="bell">🔔</span><h3>الإشعارات مُفعّلة ✅</h3><p>ستصلك الفواتير والدفعات لحظة تسجيلها</p>';return}
   if(p==='denied'){
     card.innerHTML='<span class="bell">🔕</span><h3>الإشعارات محظورة</h3><p>لتفعيلها اتبع:</p><ol><li>اضغط على 🔒 بجانب الرابط</li><li>اختر «الإشعارات» ← «السماح»</li><li>أعد تحميل الصفحة</li></ol><button id="pubNotifBtn">🔄 أعد المحاولة</button>';
   }else{
@@ -617,38 +701,27 @@ function refreshPubNotifCard(){
   }
   $('#pubNotifBtn').onclick=()=>activateCustomerNotifications(new URLSearchParams(location.search).get('c'));
 }
-
-/* ✅ تفعيل الإشعارات - مع انتظار push.js ومهلة زمنية لمنع التعليق */
 async function activateCustomerNotifications(tk){
   if(!(('Notification' in window)&&('serviceWorker' in navigator)&&('PushManager' in window)))
     return alert('متصفحك لا يدعم الإشعارات.\nاستخدم Chrome أو Safari حديث.');
-
-  if(/iPad|iPhone|iPod/.test(navigator.userAgent) && !(window.matchMedia('(display-mode: standalone)').matches||window.navigator.standalone===true))
+  if(/iPad|iPhone|iPod/.test(navigator.userAgent)&&!(window.matchMedia('(display-mode: standalone)').matches||window.navigator.standalone===true))
     return alert('لتشغيل الإشعارات على iPhone:\n\n1) اضغط زر المشاركة 📤 في Safari\n2) اختر «إضافة إلى الشاشة الرئيسية»\n3) افتح التطبيق من الأيقونة الجديدة\n4) اضغط «تفعيل» مرة أخرى');
-
   if(Notification.permission==='denied'){
     alert('الإشعارات محظورة من إعدادات المتصفح.\n\nلتفعيلها:\n1) اضغط على 🔒 بجانب الرابط\n2) اختر «الإشعارات» ← «السماح»\n3) أعد تحميل الصفحة');
-    refreshPubNotifCard();
-    return;
+    refreshPubNotifCard();return;
   }
-
   const btn=$('#pubNotifBtn');
   if(btn){btn.disabled=true;btn.textContent='⏳ جارٍ التفعيل...'}
-
   try{
-    /* 1) انتظر تحميل push.js (بحد أقصى 8 ثوان) */
     const t0=Date.now();
     while(typeof window.enablePushNotifications!=='function'){
       if(Date.now()-t0>8000)throw new Error('لم يُحمَّل push.js — أعد تحميل الصفحة');
       await new Promise(r=>setTimeout(r,100));
     }
-
-    /* 2) استدعِ التفعيل بمهلة أقصى 25 ثانية */
     await Promise.race([
       window.enablePushNotifications(),
       new Promise((_,rej)=>setTimeout(()=>rej(new Error('انتهت مهلة التفعيل — تحقق من الإنترنت')),25000))
     ]);
-
     toast('✅ تم تفعيل الإشعارات بنجاح');
     setTimeout(refreshPubNotifCard,600);
   }catch(e){
@@ -656,7 +729,7 @@ async function activateCustomerNotifications(tk){
     toast('تعذّر التفعيل: '+(e.message||''));
     setTimeout(refreshPubNotifCard,400);
   }finally{
-    if(btn && btn.isConnected){btn.disabled=false;btn.textContent='✅ تفعيل الإشعارات الآن'}
+    if(btn&&btn.isConnected){btn.disabled=false;btn.textContent='✅ تفعيل الإشعارات الآن'}
   }
 }
 
