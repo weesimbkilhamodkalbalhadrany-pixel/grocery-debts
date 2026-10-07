@@ -234,7 +234,7 @@ function loginView(){
     try{await setPersistence(auth,browserLocalPersistence);
       if(reg){const name=$('#a-name').value.trim();if(!name)throw{code:'auth/missing-name'};
         const cr=await createUserWithEmailAndPassword(auth,email,pass);
-        await setDoc(doc(db,'settings',cr.user.uid),{name,currency:'ر.ي',phone:'',address:'',autoWhatsApp:true},{merge:true});toast('تم إنشاء الحساب')}
+        await setDoc(doc(db,'settings',cr.user.uid),{name,currency:'ر.ي',phone:'',address:'',autoWhatsApp:true,createdAt:Date.now()},{merge:true});toast('تم إنشاء الحساب')}
       else{await signInWithEmailAndPassword(auth,email,pass);toast('مرحباً بك')}
     }catch(e){$('#a-go').disabled=false;toast(authErr(e))}};
   $('#a-pass').addEventListener('keydown',e=>{if(e.key==='Enter')$('#a-go').click()});
