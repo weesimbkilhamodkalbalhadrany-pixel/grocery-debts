@@ -78,7 +78,7 @@ a.innerHTML='<div style="text-align:center;padding:70px 20px"><div style="font-s
 <script type="module">
 import{initializeApp}from"https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
 import{getAuth,GoogleAuthProvider,signInWithPopup,onAuthStateChanged,signOut,signInWithEmailAndPassword,createUserWithEmailAndPassword,sendPasswordResetEmail,setPersistence,browserLocalPersistence}from"https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
-import{getFirestore,initializeFirestore,persistentLocalCache,persistentMultipleTabManager,doc,setDoc,getDoc,collection,query,where,orderBy,onSnapshot,writeBatch,increment,updateDoc,deleteDoc}from"https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+import{getFirestore,initializeFirestore,persistentLocalCache,persistentMultipleTabManager,doc,setDoc,getDoc,collection,query,where,orderBy,onSnapshot,runTransaction,increment,updateDoc,deleteDoc}from"https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
 
 const fb=initializeApp({apiKey:"AIzaSyDaLsIF93OD-Lr9y51j_s4wB9OzahLUiTQ",authDomain:"grocery-debts.firebaseapp.com",projectId:"grocery-debts",storageBucket:"grocery-debts.firebasestorage.app",messagingSenderId:"484535933298",appId:"1:484535933298:web:87f8e2ea08a6d26231e5eb"});
 const auth=getAuth(fb);let db;
@@ -102,9 +102,11 @@ const pos=b=>Math.max(b||0,0);
 const setNet=()=>document.body.classList.toggle('offline',!navigator.onLine);
 addEventListener('online',()=>{setNet();toast('🌐 عاد الاتصال — جارٍ المزامنة')});addEventListener('offline',()=>{setNet();toast('📡 لا يوجد إنترنت — التسجيل يُحفظ محلياً')});setNet();
 
-/* الكتابة المحلية أولاً: لا ننتظر السيرفر عند انقطاع الإنترنت */
-const fire=p=>{p.catch(e=>{console.error(e);toast('تعذّرت المزامنة: '+(e.code||e.message||''))});
-  return navigator.onLine?Promise.race([p.catch(()=>{}),new Promise(r=>setTimeout(r,1500))]):Promise.resolve()};
+/* ✅ الكتابة: await كامل بدون race (سبب الخطأ السابق) */
+const fire=async p=>{
+  try{await p}
+  catch(e){console.error(e);toast('تعذّرت المزامنة: '+(e.code||e.message||''))}
+};
 const okMsg=m=>{buzz();toast(navigator.onLine?m:'✅ حُفظ على جهازك — سيُزامن عند عودة الإنترنت')};
 
 const LIBS={qr:['https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js',()=>window.QRCode],chart:['https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js',()=>window.Chart],pdf:['https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js',()=>window.html2pdf]};
@@ -117,9 +119,9 @@ customers:[],suppliers:[],products:[],sales:[],purchases:[],expenses:[],ledger:[
 settings:{name:'الكامل سوفت',currency:'ر.ي',phone:'',address:'',autoWhatsApp:true},
 cart:[],formOpen:false,q:'',cf:'all',per:'d',lt:'',unsubs:[],chart:null,pend:{}};
 
-/* ===== التنقل مع زر الرجوع (History API) ===== */
+/* ===== التنقل ===== */
 let D=1,mOpen=false,mPushed=false,pend=false,hq=[],lastBack=0;
-const H=f=>pend?hq.push(f):f();               // تأجيل تعديل السجل حتى ينتهي history.back()
+const H=f=>pend?hq.push(f):f();
 function modal(h){$('#modalBox').innerHTML=h;$('#modal').classList.add('open');
   if(!mOpen){mOpen=true;H(()=>{if(mOpen){history.pushState({m:1,d:D},'');mPushed=true}})}}
 window.closeModal=()=>{if(!mOpen)return;mOpen=false;$('#modal').classList.remove('open');if(mPushed){mPushed=false;pend=true;history.back()}};
@@ -128,8 +130,7 @@ addEventListener('popstate',e=>{
   if(pend){pend=false;const q=hq;hq=[];q.forEach(f=>f());return}
   if(mOpen){mOpen=false;mPushed=false;$('#modal').classList.remove('open');return}
   const st=e.state||{root:1};
-  if(st.root){ // وصلنا لحاجز الخروج
-    if(Date.now()-lastBack<2000){history.back();return}
+  if(st.root){if(Date.now()-lastBack<2000){history.back();return}
     lastBack=Date.now();toast('اضغط رجوع مرة أخرى للخروج');
     history.pushState({v:'dashboard',d:1},'');D=1;S.view='dashboard';S.formOpen=false;render();return}
   D=st.d||1;S.view=st.v||'dashboard';S.formOpen=false;S.cart=[];S.q='';
@@ -149,7 +150,18 @@ const newLedgerRef=()=>doc(collection(db,'ledger'));
 const btns=ok=>`<div class="row" style="margin-top:12px"><button class="btn o w" onclick="closeModal()">إلغاء</button><button class="btn w" id="sv">${ok||'حفظ'}</button></div>`;
 const delBtn=`<button class="btn o r w" id="dl" style="margin-top:8px">🗑 حذف</button>`;
 
-/* ===== مؤشر المزامنة ===== */
+/* ✅ معاملة آمنة: إنشاء حركة + تحديث الرصيد في نفس الوقت */
+async function txnDebt(col,entId,ledgerDoc,deltaBalance){
+  const ref=doc(db,col,entId);
+  await runTransaction(db,async tx=>{
+    const snap=await tx.get(ref);
+    const cur=snap.exists()?(snap.data().balance||0):0;
+    const newBal=cur+deltaBalance;
+    tx.set(newLedgerRef(),ledgerDoc);
+    tx.update(ref,{balance:newBal});
+  });
+}
+
 function updateSync(){const n=Object.values(S.pend).some(Boolean);$('#sync').style.display=n?'block':'none'}
 
 /* ===== واتساب ===== */
@@ -182,7 +194,7 @@ products:()=>productsList(),sales:()=>docList('sale'),'sale-new':()=>invNew('sal
 expenses:()=>expensesList(),employees:()=>employeesList(),employee:()=>employeePage(),reports:()=>reportsView(),ledger:()=>ledgerView(),settings:()=>settingsView(),more:()=>moreView()};
 function render(){if(!S.user){loginView();return}nav();(V[S.view]||V.dashboard)()}
 
-/* ===== القائمة السريعة (+) ===== */
+/* ===== القائمة السريعة ===== */
 function quickSheet(){
   modal(`<h2>ماذا تريد أن تسجّل؟</h2><div class="g2" style="margin-top:12px">
   <button class="btn r" id="q1">🔴 تسجيل دين</button><button class="btn gr" id="q2">🟢 استلام دفعة</button>
@@ -201,7 +213,6 @@ function pickCustomer(type){
   $('#ps').oninput=draw;draw();$('#nc').onclick=()=>customerForm();
 }
 
-/* ===== مكوّنات العرض ===== */
 const rowH=(col,t,s,v,vc,id,x='')=>`<div class="item" data-id="${id}"><div class="row" style="gap:11px"><div class="av" style="background:${col}22;color:${col}">${esc(initials(t))}</div><div><b>${esc(t)}</b><br><small>${s}</small></div></div><div style="text-align:left"><b class="${vc}">${v}</b>${x}</div></div>`;
 function txRow(l,del){const i=l.dir==='in',can=del&&(l.type==='debt'||l.type==='payment')&&!l.ref;
   return `<div class="tx"><div><b style="font-size:.86rem">${esc(l.label||l.type)}</b><br><small>${dt(l.ts)}${l.note?' · '+esc(l.note):''}</small></div><div class="row" style="gap:8px"><b class="${i?'ok':'due'}">${i?'+':'-'}${n2(l.amount)}</b>${can?`<a class="btn g sm" data-deltx="${l.id}">🗑</a>`:''}</div></div>`}
@@ -297,9 +308,9 @@ function customerForm(c){
     const name=$('#n').value.trim();if(!name)return toast('اكتب الاسم');
     const d={name,phone:$('#ph').value.trim(),limit:Number($('#lm').value)||0};
     if(e)await fire(updateDoc(doc(db,'accounts',c.id),d));
-    else{const t=newToken(),op=Number($('#op').value)||0,bt=writeBatch(db);
-      bt.set(doc(db,'accounts',t),{owner:S.user.uid,...d,balance:op,currency:S.settings.currency,createdAt:Date.now()});
-      if(op>0)bt.set(newLedgerRef(),ledgerData('debt','رصيد افتتاحي',op,'out',0,{accountId:t}));await fire(bt.commit())}
+    else{const t=newToken(),op=Number($('#op').value)||0;
+      await fire(setDoc(doc(db,'accounts',t),{owner:S.user.uid,...d,balance:op,currency:S.settings.currency,createdAt:Date.now()}));
+      if(op>0)await fire(setDoc(newLedgerRef(),ledgerData('debt','رصيد افتتاحي',op,'out',0,{accountId:t})))}
     closeModal();okMsg('تم الحفظ');};
   if(e)$('#dl').onclick=async()=>{if(!confirm('حذف العميل "'+c.name+'"؟'+((c.balance||0)!==0?'\nعليه رصيد '+n2(c.balance)+' — سيُحذف كشف حسابه من الرابط أيضاً.':'')))return;
     await fire(deleteDoc(doc(db,'accounts',c.id)));closeModal();toast('تم الحذف')};
@@ -317,13 +328,12 @@ function supplierForm(s){
   $('#sv').onclick=async()=>{
     const name=$('#n').value.trim();if(!name)return toast('اكتب الاسم');
     if(e)await fire(updateDoc(doc(db,'suppliers',s.id),{name,phone:$('#ph').value.trim()}));
-    else{const op=Number($('#op').value)||0,t=newToken(),bt=writeBatch(db);
-      bt.set(doc(db,'suppliers',t),{owner:S.user.uid,name,phone:$('#ph').value.trim(),balance:op,createdAt:Date.now()});
-      if(op>0)bt.set(newLedgerRef(),ledgerData('purchase','رصيد افتتاحي مورد',op,'out',0,{supplierId:t}));await fire(bt.commit())}
+    else{const op=Number($('#op').value)||0,t=newToken();
+      await fire(setDoc(doc(db,'suppliers',t),{owner:S.user.uid,name,phone:$('#ph').value.trim(),balance:op,createdAt:Date.now()}));
+      if(op>0)await fire(setDoc(newLedgerRef(),ledgerData('purchase','رصيد افتتاحي مورد',op,'out',0,{supplierId:t})))}
     closeModal();okMsg('تم الحفظ');};
   if(e)$('#dl').onclick=async()=>{if(!confirm('حذف المورد "'+s.name+'"؟'))return;await fire(deleteDoc(doc(db,'suppliers',s.id)));closeModal();toast('تم الحذف')};
 }
-/* صفحة العميل/المورد */
 function partyPage(kind){
   const cu=kind==='customer',id=cu?S.customerId:S.supplierId,e=(cu?S.customers:S.suppliers).find(x=>x.id===id);
   if(!e)return go(cu?'customers':'suppliers',null,true);
@@ -344,15 +354,24 @@ function partyPage(kind){
   if(cu){need('qr').then(()=>new QRCode($('#qr'),{text:L,width:138,height:138})).catch(()=>{$('#qr').innerHTML='<small style="color:#666">QR يحتاج إنترنت مرة واحدة</small>'});$('#rm').onclick=()=>remind(e);$('#cp').onclick=()=>navigator.clipboard.writeText(L).then(()=>toast('تم نسخ الرابط'))}
   if(!cu)S.supplierId=id;
 }
-/* حذف حركة دين/دفعة مع عكس الرصيد بشكل آمن (increment) */
+/* ✅ حذف حركة عبر معاملة آمنة */
 async function delTx(l,ent,kind){
   if(!l||!confirm('حذف هذه الحركة ('+n2(l.amount)+')؟ سيُعاد احتساب الرصيد.'))return;
-  const delta=l.dir==='out'?-l.amount:l.amount,bt=writeBatch(db);
-  bt.delete(doc(db,'ledger',l.id));bt.update(doc(db,kind==='customer'?'accounts':'suppliers',ent.id),{balance:increment(delta)});
-  await fire(bt.commit());okMsg('تم حذف الحركة');
+  const delta=l.dir==='out'?-l.amount:l.amount;
+  const col=kind==='customer'?'accounts':'suppliers';
+  const ref=doc(db,col,ent.id);
+  try{
+    await runTransaction(db,async tx=>{
+      const snap=await tx.get(ref);
+      const cur=snap.exists()?(snap.data().balance||0):0;
+      tx.delete(doc(db,'ledger',l.id));
+      tx.update(ref,{balance:cur+delta});
+    });
+    okMsg('تم حذف الحركة');
+  }catch(e){console.error(e);toast('فشل الحذف: '+(e.code||e.message))}
 }
 
-/* ====== تسجيل دين/دفعة (محلي أولاً ثم مزامنة) ====== */
+/* ====== ✅ الإصلاح الرئيسي: تسجيل دين/دفعة ====== */
 function amountForm(type,ent,kind){
   const isDebt=type==='debt',isCust=kind==='customer';
   modal(`<h2>${isDebt?'تسجيل دين على':'تسجيل دفعة '+(isCust?'من':'إلى')} ${esc(ent.name)}</h2>
@@ -367,16 +386,28 @@ function amountForm(type,ent,kind){
     if(isDebt&&isCust&&ent.limit>0&&newB>ent.limit&&!confirm('هذا الدين يتجاوز سقف العميل ('+n2(ent.limit)+'). هل تريد المتابعة؟'))return;
     const svBtn=$('#sv');svBtn.disabled=true;svBtn.textContent='جارٍ الحفظ...';$('#err').style.display='none';
     try{
-      const col=isCust?'accounts':'suppliers',extra=isCust?{accountId:ent.id}:{supplierId:ent.id},bt=writeBatch(db);
-      bt.set(newLedgerRef(),ledgerData(isDebt?'debt':'payment',isDebt?'دين':'دفعة',amount,isDebt?'out':'in',isDebt?0:(isCust?amount:-amount),{...extra,note:$('#nt').value.trim()}));
-      bt.update(doc(db,col,ent.id),{balance:increment(isDebt?amount:-amount)});
-      await fire(bt.commit());closeModal();okMsg('✅ تم التسجيل بنجاح');
+      const col=isCust?'accounts':'suppliers';
+      const extra=isCust?{accountId:ent.id}:{supplierId:ent.id};
+      const delta=isDebt?amount:-amount;
+      const ledgerDoc=ledgerData(isDebt?'debt':'payment',isDebt?'دين':'دفعة',amount,isDebt?'out':'in',isDebt?0:(isCust?amount:-amount),{...extra,note:$('#nt').value.trim()});
+      const ref=doc(db,col,ent.id);
+      const ledgerRef=newLedgerRef();
+
+      // ✅ runTransaction بدل writeBatch — يتفادى INTERNAL ASSERTION
+      await runTransaction(db,async tx=>{
+        const snap=await tx.get(ref);
+        const cur=snap.exists()?(snap.data().balance||0):0;
+        const nb=cur+delta;
+        tx.set(ledgerRef,ledgerDoc);
+        tx.update(ref,{balance:nb});
+      });
+
+      closeModal();okMsg('✅ تم التسجيل بنجاح');
       const note=$('#nt').value.trim(),cur=S.settings.currency||'ر.ي',now=new Date();
       let m=`مرحباً ${ent.name} 👋\n`+(isDebt?`🔴 تم تسجيل دين جديد بقيمة: ${amount} ${cur}\n`:`🟢 تم تسجيل دفعة بقيمة: ${amount} ${cur}\n`);
       if(note)m+=`📝 ملاحظات: ${note}\n`;
       m+=`📊 إجمالي حسابك الحالي: ${newB} ${cur}\n📅 التاريخ: ${now.toLocaleDateString('ar-EG')} - ${now.toLocaleTimeString('ar-EG',{hour:'2-digit',minute:'2-digit'})}\n\n`+(isDebt?'شكراً لثقتكم بنا 🌹':'شكراً لالتزامكم بالسداد 💚');
-      // الإشعار للعميل يحتاج إنترنت؛ نرسله فقط عند الاتصال
-      if(isCust&&navigator.onLine&&window.notifyCustomer)window.notifyCustomer(ent.id,m,S.settings.name);
+      if(isCust&&navigator.onLine&&window.notifyCustomer)try{window.notifyCustomer(ent.id,m,S.settings.name)}catch(e){}
       if(isCust&&ent.phone)setTimeout(()=>notifyDebt(ent.name,ent.phone,amount,newB,isDebt?'debt':'payment'),450);
     }catch(e){console.error(e);$('#err').textContent='فشل: '+(e.code||e.message||'خطأ');$('#err').style.display='block';svBtn.disabled=false;svBtn.textContent='تأكيد'}};
 }
@@ -404,7 +435,7 @@ function productForm(p){
   if(e)$('#dl').onclick=async()=>{if(!confirm('حذف المنتج "'+p.name+'"؟'))return;await fire(deleteDoc(doc(db,'products',p.id)));closeModal();toast('تم الحذف')};
 }
 
-/* ===== الفواتير (بيع/شراء) ===== */
+/* ===== الفواتير ===== */
 function docList(kind){
   const sl=kind==='sale',L=sl?S.sales:S.purchases;
   A.innerHTML=`<div class="top"><h1>${sl?'المبيعات':'المشتريات'}</h1><button class="btn am sm" id="add">+ فاتورة</button></div>
@@ -441,17 +472,38 @@ async function saveInv(kind){
   const sl=kind==='sale',pid=$('#party').value,p=(sl?S.customers:S.suppliers).find(x=>x.id===pid);
   const total=sum(S.cart,i=>i.qty*i.price),paid=Math.max(0,Math.min(Number($('#paid').value)||0,total)),due=total-paid;
   if(due>0&&!p)return toast(sl?'اختر عميلاً للبيع الآجل':'اختر مورداً للشراء الآجل');
-  const bt=writeBatch(db),ref=doc(collection(db,sl?'sales':'purchases')),idf=sl?'accountId':'supplierId',pc=sl?'accounts':'suppliers';
-  bt.set(ref,{owner:S.user.uid,ts:Date.now(),[sl?'customerId':'supplierId']:pid||null,[sl?'customerName':'supplierName']:p?.name||(sl?'عميل نقدي':'مورد نقدي'),
-    items:S.cart.map(i=>({id:i.id,name:i.name,qty:i.qty,price:i.price})),total,paid,due});
-  S.cart.forEach(i=>bt.update(doc(db,'products',i.id),sl?{stock:increment(-i.qty)}:{stock:increment(i.qty),cost:i.price}));
-  if(paid>0)bt.set(newLedgerRef(),ledgerData(sl?'sale':'purchase',sl?'فاتورة بيع':'فاتورة شراء',paid,sl?'in':'out',sl?paid:-paid,{ref:ref.id}));
-  if(due>0){bt.set(newLedgerRef(),ledgerData(sl?'sale':'purchase',sl?'فاتورة بيع آجل':'فاتورة شراء آجل',due,'out',0,{[idf]:pid,ref:ref.id}));bt.update(doc(db,pc,pid),{balance:increment(due)})}
+  const ref=doc(collection(db,sl?'sales':'purchases')),idf=sl?'accountId':'supplierId',pc=sl?'accounts':'suppliers';
+  const rec={owner:S.user.uid,ts:Date.now(),[sl?'customerId':'supplierId']:pid||null,[sl?'customerName':'supplierName']:p?.name||(sl?'عميل نقدي':'مورد نقدي'),
+    items:S.cart.map(i=>({id:i.id,name:i.name,qty:i.qty,price:i.price})),total,paid,due};
   const saved={id:ref.id,ts:Date.now(),[sl?'customerName':'supplierName']:p?.name||(sl?'عميل نقدي':'مورد نقدي'),items:[...S.cart],total,paid,due};
-  await fire(bt.commit());
-  S.formOpen=false;S.cart=[];okMsg('✅ تم حفظ الفاتورة');go(sl?'sales':'purchases',null,true);
-  setTimeout(()=>{modal(`<h2>تم حفظ الفاتورة ✅</h2><p style="margin:10px 0;font-size:.9rem">هل تريد طباعة الفاتورة؟</p><div class="row"><button class="btn o w" onclick="closeModal()">إغلاق</button><button class="btn w" id="pv">🖨️ طباعة PDF</button></div>`);
-    $('#pv').onclick=()=>{closeModal();invoicePDF(saved,kind)}},500);
+  try{
+    // ✅ الأول: إنشاء الفاتورة
+    await setDoc(ref,rec);
+    // ✅ الثاني: تحديث المخزون (بالتسلسل)
+    for(const i of S.cart){
+      const pr=doc(db,'products',i.id);
+      await runTransaction(db,async tx=>{
+        const sn=await tx.get(pr);
+        if(!sn.exists())return;
+        const cur=sn.data().stock||0;
+        tx.update(pr,sl?{stock:cur-i.qty}:{stock:cur+i.qty,cost:i.price});
+      });
+    }
+    // ✅ الثالث: الحركات المالية
+    if(paid>0)await setDoc(newLedgerRef(),ledgerData(sl?'sale':'purchase',sl?'فاتورة بيع':'فاتورة شراء',paid,sl?'in':'out',sl?paid:-paid,{ref:ref.id}));
+    if(due>0){
+      await setDoc(newLedgerRef(),ledgerData(sl?'sale':'purchase',sl?'فاتورة بيع آجل':'فاتورة شراء آجل',due,'out',0,{[idf]:pid,ref:ref.id}));
+      const pref=doc(db,pc,pid);
+      await runTransaction(db,async tx=>{
+        const sn=await tx.get(pref);
+        const cur=sn.data()?.balance||0;
+        tx.update(pref,{balance:cur+due});
+      });
+    }
+    S.formOpen=false;S.cart=[];okMsg('✅ تم حفظ الفاتورة');go(sl?'sales':'purchases',null,true);
+    setTimeout(()=>{modal(`<h2>تم حفظ الفاتورة ✅</h2><p style="margin:10px 0;font-size:.9rem">هل تريد طباعة الفاتورة؟</p><div class="row"><button class="btn o w" onclick="closeModal()">إغلاق</button><button class="btn w" id="pv">🖨️ طباعة PDF</button></div>`);
+      $('#pv').onclick=()=>{closeModal();invoicePDF(saved,kind)}},500);
+  }catch(e){console.error(e);toast('فشل حفظ الفاتورة: '+(e.code||e.message))}
 }
 
 /* ===== المصروفات ===== */
@@ -465,9 +517,10 @@ function expenseForm(){
   modal(`<h2>مصروف جديد</h2><label>التصنيف</label><select id="cat">${['إيجار','رواتب','كهرباء','ماء','اتصالات','نقل','صيانة','أخرى'].map(x=>`<option>${x}</option>`).join('')}</select>
   <label>المبلغ *</label><input id="am" type="number" inputmode="decimal"><label>ملاحظة</label><input id="nt">${btns()}`);
   $('#sv').onclick=async()=>{const amount=Number($('#am').value);if(!(amount>0))return toast('أدخل مبلغاً');
-    const cat=$('#cat').value,nt=$('#nt').value.trim(),bt=writeBatch(db);
-    bt.set(doc(collection(db,'expenses')),{owner:S.user.uid,ts:Date.now(),category:cat,amount,note:nt});
-    bt.set(newLedgerRef(),ledgerData('expense','مصروف: '+cat,amount,'out',-amount,{note:nt}));await fire(bt.commit());closeModal();okMsg('تم التسجيل')};
+    const cat=$('#cat').value,nt=$('#nt').value.trim();
+    await fire(setDoc(doc(collection(db,'expenses')),{owner:S.user.uid,ts:Date.now(),category:cat,amount,note:nt}));
+    await fire(setDoc(newLedgerRef(),ledgerData('expense','مصروف: '+cat,amount,'out',-amount,{note:nt})));
+    closeModal();okMsg('تم التسجيل')};
 }
 
 /* ===== الموظفين ===== */
@@ -486,9 +539,9 @@ function employeeForm(emp){
     const name=$('#n').value.trim();if(!name)return toast('اكتب الاسم');
     const d={name,position:$('#po').value.trim(),phone:$('#ph').value.trim(),salary:Number($('#sa').value)||0};
     if(e)await fire(updateDoc(doc(db,'employees',emp.id),d));
-    else{const op=Number($('#op').value)||0,r=doc(collection(db,'employees')),bt=writeBatch(db);
-      bt.set(r,{owner:S.user.uid,...d,balance:op,createdAt:Date.now()});
-      if(op>0)bt.set(newLedgerRef(),ledgerData('advance','سحبيات سابقة',op,'out',-op,{employeeId:r.id}));await fire(bt.commit())}
+    else{const op=Number($('#op').value)||0,r=doc(collection(db,'employees'));
+      await fire(setDoc(r,{owner:S.user.uid,...d,balance:op,createdAt:Date.now()}));
+      if(op>0)await fire(setDoc(newLedgerRef(),ledgerData('advance','سحبيات سابقة',op,'out',-op,{employeeId:r.id})))}
     closeModal();okMsg('تم الحفظ');};
   if(e)$('#dl').onclick=async()=>{if(!confirm('حذف الموظف "'+emp.name+'"؟'))return;await fire(deleteDoc(doc(db,'employees',emp.id)));closeModal();toast('تم الحذف')};
 }
@@ -511,10 +564,17 @@ function employeeAmountForm(type,emp){
   <label>ملاحظة</label><input id="nt" placeholder="اختياري"><div id="err" style="color:var(--red);font-size:.8rem;display:none"></div>${btns('تأكيد')}`);
   $('#sv').onclick=async()=>{const amount=Number($('#am').value);if(!(amount>0))return toast('أدخل مبلغاً صحيحاً');
     const b=$('#sv');b.disabled=true;b.textContent='جارٍ الحفظ...';
-    try{const bt=writeBatch(db);
-      bt.set(newLedgerRef(),ledgerData(type,Lb.title,amount,Lb.dir,Lb.cash*amount,{employeeId:emp.id,note:$('#nt').value.trim()}));
-      bt.update(doc(db,'employees',emp.id),{balance:increment(Lb.sign*amount)});await fire(bt.commit());closeModal();okMsg('✅ تم التسجيل')}
-    catch(e){console.error(e);$('#err').textContent='فشل: '+(e.code||e.message);$('#err').style.display='block';b.disabled=false;b.textContent='تأكيد'}};
+    try{
+      const ref=doc(db,'employees',emp.id);
+      const delta=Lb.sign*amount;
+      await runTransaction(db,async tx=>{
+        const sn=await tx.get(ref);
+        const cur=sn.data()?.balance||0;
+        tx.set(newLedgerRef(),ledgerData(type,Lb.title,amount,Lb.dir,Lb.cash*amount,{employeeId:emp.id,note:$('#nt').value.trim()}));
+        tx.update(ref,{balance:cur+delta});
+      });
+      closeModal();okMsg('✅ تم التسجيل')
+    }catch(e){console.error(e);$('#err').textContent='فشل: '+(e.code||e.message);$('#err').style.display='block';b.disabled=false;b.textContent='تأكيد'}};
 }
 
 /* ===== التقارير ===== */
@@ -602,24 +662,59 @@ function publicView(tk){
   onSnapshot(query(collection(db,'ledger'),where('accountId','==',tk)),s=>{all.l=pt(s.docs);rt()});
   onSnapshot(query(collection(db,'accounts',tk,'tx'),orderBy('ts','desc')),s=>{all.o=pt(s.docs);rt()},e=>console.log('no old tx'));
 }
+
+/* ✅ بطاقة الإشعارات - تفحص الحالة الفعلية */
 function refreshPubNotifCard(){
   const card=$('#notifCard');if(!card)return;
   if(!(('Notification' in window)&&('serviceWorker' in navigator)&&('PushManager' in window))){card.style.display='none';return}
   const p=Notification.permission;
   if(p==='granted'){card.innerHTML='<span class="bell">🔔</span><h3>الإشعارات مُفعّلة ✅</h3><p>ستصلك الفواتير والدفعات لحظة تسجيلها</p>';return}
-  if(p==='denied'){card.innerHTML='<span class="bell">🔕</span><h3>الإشعارات محظورة</h3><p>فعّلها من إعدادات المتصفح لهذا الموقع</p>';return}
+  if(p==='denied'){
+    card.innerHTML='<span class="bell">🔕</span><h3>الإشعارات محظورة</h3><p>لتفعيلها:</p><ol style="text-align:right;font-size:.78rem;line-height:1.9;padding-right:18px;margin:8px 0"><li>اضغط على 🔒 بجانب الرابط</li><li>اختر "الإشعارات" ← "السماح"</li><li>أعد تحميل الصفحة</li></ol><button id="pubNotifBtn">🔄 أعد المحاولة</button>';return}
   card.innerHTML='<span class="bell">🔔</span><h3>فعّل الإشعارات</h3><p>لتصلك الفواتير والدفعات لحظة تسجيلها على حسابك</p><button id="pubNotifBtn">✅ تفعيل الإشعارات الآن</button>';
   $('#pubNotifBtn').onclick=()=>activateCustomerNotifications(new URLSearchParams(location.search).get('c'));
 }
+
+/* ✅ إصلاح تفعيل الإشعارات - طلب الإذن أولاً */
 async function activateCustomerNotifications(tk){
-  if(!(('Notification' in window)&&('serviceWorker' in navigator)&&('PushManager' in window)))return alert('متصفحك لا يدعم الإشعارات.\nاستخدم Chrome أو Safari حديث.');
+  if(!(('Notification' in window)&&('serviceWorker' in navigator)&&('PushManager' in window)))
+    return alert('متصفحك لا يدعم الإشعارات.\nاستخدم Chrome أو Safari حديث.');
+
   if(/iPad|iPhone|iPod/.test(navigator.userAgent)&&!(window.matchMedia('(display-mode: standalone)').matches||window.navigator.standalone===true))
     return alert('لتشغيل الإشعارات على iPhone:\n\n1) اضغط زر المشاركة 📤 في Safari\n2) اختر "إضافة إلى الشاشة الرئيسية"\n3) افتح التطبيق من الأيقونة الجديدة\n4) اضغط "تفعيل" مرة أخرى');
-  const btn=$('#pubNotifBtn');if(btn){btn.disabled=true;btn.textContent='⏳ جارٍ التفعيل...'}
+
+  if(Notification.permission==='denied'){
+    alert('الإشعارات محظورة من إعدادات المتصفح.\n\nلتفعيلها:\n1) اضغط على 🔒 بجانب الرابط\n2) اختر "الإشعارات" ← "السماح"\n3) أعد تحميل الصفحة');
+    refreshPubNotifCard();
+    return;
+  }
+
+  const btn=$('#pubNotifBtn');
+  if(btn){btn.disabled=true;btn.textContent='⏳ جارٍ التفعيل...'}
+
   try{
-    if(typeof window.enablePushNotifications==='function'){await window.enablePushNotifications();setTimeout(refreshPubNotifCard,800);toast('✅ تم تفعيل الإشعارات بنجاح')}
-    else{const perm=await Notification.requestPermission();toast(perm==='granted'?'✅ تم منح الإذن — أعد تحميل الصفحة':'❌ تم رفض الإشعارات');refreshPubNotifCard()}
-  }catch(e){console.error(e);toast('تعذّر تفعيل الإشعارات');if(btn){btn.disabled=false;btn.textContent='✅ تفعيل الإشعارات الآن'}}
+    // ✅ الخطوة 1: اطلب الإذن مباشرة
+    let perm=Notification.permission;
+    if(perm!=='granted') perm=await Notification.requestPermission();
+
+    if(perm!=='granted'){
+      toast('❌ لم يتم منح الإذن');
+      refreshPubNotifCard();
+      return;
+    }
+
+    // ✅ الخطوة 2: سجّل الاشتراك
+    if(typeof window.enablePushNotifications==='function'){
+      try{await window.enablePushNotifications()}catch(e){console.warn('push.js error',e)}
+    }
+
+    toast('✅ تم تفعيل الإشعارات بنجاح');
+    setTimeout(refreshPubNotifCard,500);
+  }catch(e){
+    console.error(e);
+    toast('تعذّر تفعيل الإشعارات: '+(e.message||''));
+    refreshPubNotifCard();
+  }
 }
 
 /* ===== التهيئة ===== */
@@ -640,7 +735,6 @@ if('serviceWorker' in navigator)navigator.serviceWorker.register('sw.js').catch(
 const tk=new URLSearchParams(location.search).get('c');
 if(tk)publicView(tk);
 else{
-  // حاجز الخروج: أول سجل = حاجز، والثاني = الرئيسية، فيعود زر الرجوع داخل التطبيق بدل الخروج
   history.replaceState({root:1},'');history.pushState({v:'dashboard',d:1},'');D=1;
   onAuthStateChanged(auth,async u=>{S.user=u;if(u){loadSettings().then(()=>{if(!S.formOpen)render()});attach();render()}else{S.unsubs.forEach(x=>x());S.unsubs=[];S.pend={};updateSync();render()}});
 }
