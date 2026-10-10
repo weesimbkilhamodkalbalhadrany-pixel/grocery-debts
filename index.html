@@ -66,6 +66,8 @@ body.offline #sync{top:40px}
 #scanbox{width:100%;min-height:270px;border-radius:14px;overflow:hidden;background:#000;position:relative}
 #scanbox video{width:100%!important;height:auto!important;border-radius:14px}
 #scanbox img{display:none}
+.pos-total{background:linear-gradient(135deg,var(--ink),var(--ink2));color:#fff;border-radius:18px;padding:16px;margin:10px 0;text-align:center}
+.pos-total .amt{font-size:2rem;font-weight:800;color:var(--am);margin:4px 0}
 @media print{#nav,.btn,.nc,.ic,#sync{display:none!important}body{background:#fff;padding:0}}
 </style>
 </head>
@@ -106,11 +108,51 @@ const pos=b=>Math.max(b||0,0);
 const setNet=()=>document.body.classList.toggle('offline',!navigator.onLine);
 addEventListener('online',()=>{setNet();toast('🌐 عاد الاتصال — جارٍ المزامنة')});addEventListener('offline',()=>{setNet();toast('📡 لا يوجد إنترنت — التسجيل يُحفظ محلياً')});setNet();
 
-const fire=p=>{p.catch(e=>{console.error(e);toast('تعذّرت المزامنة: '+(e.code||e.message||''))});
-  return navigator.onLine?Promise.race([p.catch(()=>{}),new Promise(r=>setTimeout(r,1500))]):Promise.resolve()};
+/* ⭐ صوت المسح الفخم */
+const playScanSound=()=>{
+  try{
+    const AC=window.AudioContext||window.webkitAudioContext;if(!AC)return;
+    if(!window._ac)window._ac=new AC();
+    const ctx=window._ac;
+    if(ctx.state==='suspended')ctx.resume();
+    const now=ctx.currentTime;
+    const master=ctx.createGain();master.gain.value=0.9;master.connect(ctx.destination);
+    /* arpeggio فخم: C6 → E6 → G6 → C7 */
+    const notes=[[1046.5,0],[1318.5,0.05],[1568,0.1],[2093,0.15]];
+    notes.forEach(([freq,delay])=>{
+      const o=ctx.createOscillator(),g=ctx.createGain();
+      o.type='sine';
+      o.frequency.setValueAtTime(freq,now+delay);
+      g.gain.setValueAtTime(0,now+delay);
+      g.gain.linearRampToValueAtTime(0.14,now+delay+0.008);
+      g.gain.exponentialRampToValueAtTime(0.001,now+delay+0.32);
+      o.connect(g);g.connect(master);
+      o.start(now+delay);o.stop(now+delay+0.35);
+    });
+    /* طبقة دافئة منخفضة */
+    const o2=ctx.createOscillator(),g2=ctx.createGain();
+    o2.type='triangle';
+    o2.frequency.setValueAtTime(523.25,now);
+    o2.frequency.exponentialRampToValueAtTime(1046.5,now+0.22);
+    g2.gain.setValueAtTime(0.09,now);
+    g2.gain.exponentialRampToValueAtTime(0.001,now+0.4);
+    o2.connect(g2);g2.connect(master);
+    o2.start(now);o2.stop(now+0.45);
+    /* لمعة عالية */
+    const o3=ctx.createOscillator(),g3=ctx.createGain();
+    o3.type='sine';
+    o3.frequency.setValueAtTime(2637,now+0.12);
+    g3.gain.setValueAtTime(0,now+0.12);
+    g3.gain.linearRampToValueAtTime(0.07,now+0.135);
+    g3.gain.exponentialRampToValueAtTime(0.001,now+0.4);
+    o3.connect(g3);g3.connect(master);
+    o3.start(now+0.12);o3.stop(now+0.42);
+    if(navigator.vibrate)navigator.vibrate([25,40,35]);
+  }catch(e){}
+};
 const okMsg=m=>{buzz();toast(navigator.onLine?m:'✅ حُفظ على جهازك — سيُزامن عند عودة الإنترنت')};
 
-/* ⭐ setDocRetry — إعادة محاولة تلقائية عند فشل Firebase الداخلي */
+/* ⭐ setDocRetry */
 const setDocRetry=async(ref,data,opt)=>{
   try{return await setDoc(ref,data,opt||{})}
   catch(e){
@@ -122,6 +164,9 @@ const setDocRetry=async(ref,data,opt)=>{
     throw e;
   }
 };
+
+const fire=p=>{p.catch(e=>{console.error(e);toast('تعذّرت المزامنة: '+(e.code||e.message||''))});
+  return navigator.onLine?Promise.race([p.catch(()=>{}),new Promise(r=>setTimeout(r,1500))]):Promise.resolve()};
 
 /* ===== المكتبات ===== */
 const LIBS={
@@ -137,7 +182,7 @@ try{document.documentElement.dataset.theme=localStorage.th||''}catch(e){}
 const S={user:null,view:'dashboard',_authTab:'login',customerId:null,supplierId:null,employeeId:null,
 customers:[],suppliers:[],products:[],sales:[],purchases:[],expenses:[],ledger:[],employees:[],
 settings:{name:'الكامل سوفت',currency:'ر.ي',phone:'',address:'',autoWhatsApp:true},
-cart:[],formOpen:false,q:'',cf:'all',per:'d',lt:'',unsubs:[],chart:null,pend:{},scanner:null,_lastScan:null,_scanCb:null};
+cart:[],formOpen:false,q:'',cf:'all',per:'d',lt:'',unsubs:[],chart:null,pend:{},scanner:null,_lastScan:null,_scanCb:null,posParty:''};
 
 /* ===== التنقل ===== */
 let D=1,mOpen=false,mPushed=false,pend=false,hq=[],lastBack=0;
@@ -190,7 +235,7 @@ function notifyDebt(name,phone,amount,balance,kind){
 }
 const remind=c=>whatsappSend(c.phone,c.name,`نذكّرك بأن رصيد حسابك المستحق *${n2(c.balance)} ${S.settings.currency}*.\nكشف حسابك: ${link(c.id)}`);
 
-/* ===== ✨ قارئ الباركود ===== */
+/* ===== قارئ الباركود ===== */
 window.openScanner=cb=>{
   S._scanCb=cb;
   modal(`<h2>📷 امسح الباركود</h2>
@@ -206,7 +251,7 @@ window.openScanner=cb=>{
       code=>{
         if(S._lastScan===code)return;
         S._lastScan=code;setTimeout(()=>{S._lastScan=null},1500);
-        buzz();window.stopScanner();closeModal();
+        window.stopScanner();closeModal();
         if(S._scanCb)S._scanCb(code);
       },
       ()=>{}
@@ -239,10 +284,10 @@ function render(){if(!S.user){loginView();return}nav();(V[S.view]||V.dashboard)(
 function quickSheet(){
   modal(`<h2>ماذا تريد أن تسجّل؟</h2><div class="g2" style="margin-top:12px">
   <button class="btn r" id="q1">🔴 تسجيل دين</button><button class="btn gr" id="q2">🟢 استلام دفعة</button>
-  <button class="btn" id="q3">🧾 فاتورة بيع</button><button class="btn o" id="q4">💸 مصروف</button>
+  <button class="btn am" id="q3">🛒 بيع سريع</button><button class="btn o" id="q4">💸 مصروف</button>
   <button class="btn o" id="q5">👤 عميل جديد</button><button class="btn o" id="q6">📥 فاتورة شراء</button></div>`);
   $('#q1').onclick=()=>pickCustomer('debt');$('#q2').onclick=()=>pickCustomer('payment');
-  $('#q3').onclick=()=>{closeModal();go('sale-new')};$('#q4').onclick=()=>expenseForm();
+  $('#q3').onclick=()=>{closeModal();posMode()};$('#q4').onclick=()=>expenseForm();
   $('#q5').onclick=()=>customerForm();$('#q6').onclick=()=>{closeModal();go('purchase-new')};
 }
 function pickCustomer(type){
@@ -308,7 +353,7 @@ function dash(){
   <div><span class="ic" id="th">🌓</span><span class="ic" id="lg">📒</span></div></div>
   <div class="hero"><small>المستحق لك عند العملاء</small><div class="big">${fmt(recv)}</div>
   <div class="g3"><div class="mini"><small>الصندوق</small><b>${n2(cash)}</b></div><div class="mini"><small>مبيعات اليوم</small><b>${n2(tS)}</b></div><div class="mini"><small>دفعات اليوم</small><b>${n2(tP)}</b></div></div></div>
-  <div class="g4"><div class="act" data-q="debt"><i>🔴</i>دين</div><div class="act" data-q="payment"><i>🟢</i>دفعة</div><div class="act" data-q="sale"><i>🧾</i>بيع</div><div class="act" data-q="exp"><i>💸</i>مصروف</div></div>
+  <div class="g4"><div class="act" data-q="pos"><i>🛒</i>بيع سريع</div><div class="act" data-q="debt"><i>🔴</i>دين</div><div class="act" data-q="payment"><i>🟢</i>دفعة</div><div class="act" data-q="exp"><i>💸</i>مصروف</div></div>
   ${top.length?`<div class="sec">أعلى المديونين <small>اضغط للتذكير</small></div><div class="card">${top.map(c=>rowH('#e5484d',c.name,esc(c.phone||'—'),fmt(c.balance),'due',c.id,`<br><a class="btn g sm" data-rm="${c.id}" style="margin-top:4px">📱 تذكير</a>`)).join('')}</div>`:''}
   ${low.length?`<div class="card row" style="cursor:pointer" id="lowc"><div><b class="warn">⚠️ ${low.length} منتج قارب على النفاد</b><br><small>${esc(low.slice(0,3).map(p=>p.name).join('، '))}</small></div><span>‹</span></div>`:''}
   <div class="g2"><div class="stat"><div class="l">مستحق للموردين</div><div class="n warn">${fmt(pay)}</div></div><div class="stat"><div class="l">قيمة المخزون</div><div class="n blue">${fmt(inv)}</div></div>
@@ -317,7 +362,7 @@ function dash(){
   $('#th').onclick=()=>{const d=document.documentElement.dataset.theme==='dark'?'':'dark';document.documentElement.dataset.theme=d;try{localStorage.th=d}catch(e){}};
   $('#lg').onclick=$('#lg2').onclick=()=>go('ledger');
   if($('#lowc'))$('#lowc').onclick=()=>go('products');
-  A.querySelectorAll('[data-q]').forEach(e=>e.onclick=()=>{const q=e.dataset.q;q==='debt'||q==='payment'?pickCustomer(q):q==='sale'?go('sale-new'):expenseForm()});
+  A.querySelectorAll('[data-q]').forEach(e=>e.onclick=()=>{const q=e.dataset.q;q==='pos'?posMode():q==='debt'||q==='payment'?pickCustomer(q):q==='sale'?go('sale-new'):expenseForm()});
   A.querySelectorAll('.item[data-id]').forEach(e=>e.onclick=()=>go('customer',e.dataset.id));
   A.querySelectorAll('[data-rm]').forEach(b=>b.onclick=e=>{e.stopPropagation();remind(S.customers.find(c=>c.id===b.dataset.rm))});
 }
@@ -472,7 +517,7 @@ function productForm(p,presetBarcode){
   <div class="g2"><div><label>الوحدة</label><input id="u" value="${esc(p?.unit||'حبة')}"></div><div><label>الكمية</label><input id="st" type="number" value="${p?.stock??0}"></div></div>
   <div class="g2"><div><label>سعر التكلفة</label><input id="co" type="number" value="${p?.cost??0}"></div><div><label>سعر البيع</label><input id="pr" type="number" value="${p?.price??0}"></div></div>
   <label>حد التنبيه</label><input id="mn" type="number" value="${p?.min??0}">${btns()}${e?delBtn:''}`);
-  $('#scanbc').onclick=()=>window.openScanner(code=>{const f=$('#bc');if(f){f.value=code;toast('✅ باركود: '+code);buzz()}});
+  $('#scanbc').onclick=()=>window.openScanner(code=>{const f=$('#bc');if(f){f.value=code;playScanSound();toast('✅ باركود: '+code)}});
   $('#sv').onclick=async()=>{
     const name=$('#n').value.trim();if(!name)return toast('اكتب الاسم');
     const btn=$('#sv');btn.disabled=true;btn.textContent='جارٍ الحفظ...';
@@ -490,14 +535,132 @@ function productForm(p,presetBarcode){
   };
 }
 
+/* ===== 🛒 وضع البيع السريع (POS) ===== */
+function posMode(){S.formOpen=true;S.cart=[];S.posParty='';renderPos();}
+
+function renderPos(){
+  const total=sum(S.cart,i=>i.qty*i.price);
+  A.innerHTML=`
+  <div class="top"><button class="btn g sm" id="posBk">→ إغلاق</button><h1>🛒 بيع سريع</h1><span></span></div>
+  <div class="card" style="padding:10px"><label>العميل (اختياري — للبيع الآجل)</label>
+    <select id="posParty"><option value="">عميل نقدي</option>
+    ${S.customers.map(c=>`<option value="${c.id}" ${S.posParty===c.id?'selected':''}>${esc(c.name)} (${n2(c.balance)})</option>`).join('')}</select></div>
+  <button class="btn am w" id="posScanBtn" style="padding:18px;font-size:1.1rem;margin:8px 0">📷 امسح باركود</button>
+  <div class="g2" style="margin-bottom:10px"><button class="btn o" id="posSearchBtn">🔍 بحث يدوي</button>${S.cart.length?'<button class="btn o r" id="posClear">🗑 تفريغ</button>':'<span></span>'}</div>
+  <div class="card"><b>الأصناف (${S.cart.length})</b>
+    <div id="posCart" style="margin-top:8px">${posCartHTML()}</div></div>
+  <div class="pos-total"><small style="color:#b9cadb">الإجمالي</small><div class="amt">${n2(total)} ${S.settings.currency}</div>
+    <input id="posPaid" type="number" inputmode="decimal" placeholder="المدفوع نقداً — اتركه فارغاً للآجل" style="background:#fff;color:#000;margin:8px 0">
+    <button class="btn am w" id="posSave" style="padding:14px;font-size:1rem">💾 حفظ وفتح فاتورة جديدة</button></div>`;
+  $('#posBk').onclick=()=>{if(S.cart.length&&!confirm('لديك أصناف غير محفوظة. الخروج؟'))return;S.formOpen=false;S.cart=[];go('sales',null,true)};
+  $('#posParty').onchange=e=>S.posParty=e.target.value;
+  $('#posScanBtn').onclick=posScan;
+  $('#posSearchBtn').onclick=posManualSearch;
+  if($('#posClear'))$('#posClear').onclick=()=>{if(confirm('تفريغ السلة؟')){S.cart=[];renderPos()}};
+  $('#posSave').onclick=savePosInvoice;
+  bindPosCart();
+}
+
+function posCartHTML(){
+  if(!S.cart.length)return '<p class="hint">لم تُضف أصناف بعد — امسح باركود أو ابحث يدوياً</p>';
+  return S.cart.map((i,x)=>`<div class="tx" style="padding:8px 0">
+    <div style="flex:1;min-width:0"><b style="font-size:.9rem">${esc(i.name)}</b><br><small>${n2(i.price)} ${S.settings.currency}</small></div>
+    <div class="row" style="gap:4px">
+      <button class="btn g sm" data-minus="${x}" style="padding:4px 10px;font-size:1.1rem;min-width:34px">−</button>
+      <b style="min-width:26px;text-align:center">${i.qty}</b>
+      <button class="btn g sm" data-plus="${x}" style="padding:4px 10px;font-size:1.1rem;min-width:34px">+</button>
+      <b style="min-width:64px;text-align:left">${n2(i.qty*i.price)}</b></div></div>`).join('');
+}
+
+function bindPosCart(){
+  const box=$('#posCart');if(!box)return;
+  box.querySelectorAll('[data-minus]').forEach(b=>b.onclick=()=>{const i=+b.dataset.minus;S.cart[i].qty--;if(S.cart[i].qty<=0)S.cart.splice(i,1);renderPos()});
+  box.querySelectorAll('[data-plus]').forEach(b=>b.onclick=()=>{const i=+b.dataset.plus;S.cart[i].qty++;renderPos()});
+}
+
+function posAddItem(p){
+  const ex=S.cart.find(x=>x.id===p.id);
+  if(ex)ex.qty++;
+  else S.cart.push({id:p.id,name:p.name,qty:1,price:p.price});
+  playScanSound();
+  toast('✅ '+p.name+' — '+n2(p.price));
+  renderPos();
+}
+
+function posScan(){
+  window.openScanner(code=>{
+    const found=S.products.find(x=>x.barcode===code);
+    if(found){posAddItem(found);return;}
+    if(confirm('منتج جديد بباركود:\n'+code+'\n\nتريد إضافته؟')){
+      productForm(null,code);
+      const t0=Date.now();
+      const iv=setInterval(()=>{
+        const p=S.products.find(x=>x.barcode===code);
+        if(p){clearInterval(iv);posAddItem(p);}
+        else if(Date.now()-t0>15000){clearInterval(iv);}
+      },400);
+    }
+  });
+}
+
+function posManualSearch(){
+  modal(`<h2>🔍 ابحث عن صنف</h2>
+  <input id="pms" placeholder="اكتب اسم المنتج..." autofocus>
+  <div id="pml" style="max-height:50vh;overflow:auto;margin-top:8px"></div>
+  <button class="btn o w" onclick="closeModal()" style="margin-top:8px">إغلاق</button>`);
+  const draw=()=>{
+    const q=$('#pms').value.toLowerCase();
+    const list=S.products.filter(p=>!q||p.name.toLowerCase().includes(q)||(p.barcode||'').includes(q)).slice(0,40);
+    $('#pml').innerHTML=list.map(p=>`<div class="item" data-ppid="${p.id}"><div><b>${esc(p.name)}</b><br><small>${n2(p.price)} ${S.settings.currency} · متاح ${n2(p.stock)}</small></div><span style="color:var(--am);font-weight:800;font-size:1.4rem">+</span></div>`).join('')||'<p class="hint">لا نتائج</p>';
+    $('#pml').querySelectorAll('[data-ppid]').forEach(e=>e.onclick=()=>{
+      const p=S.products.find(x=>x.id===e.dataset.ppid);if(!p)return;
+      const ex=S.cart.find(x=>x.id===p.id);
+      if(ex)ex.qty++;else S.cart.push({id:p.id,name:p.name,qty:1,price:p.price});
+      closeModal();playScanSound();renderPos();
+    });
+  };
+  $('#pms').oninput=draw;draw();
+}
+
+async function savePosInvoice(){
+  if(!S.cart.length)return toast('أضف أصنافاً أولاً');
+  const pid=S.posParty||'',p=(S.customers||[]).find(x=>x.id===pid);
+  const total=sum(S.cart,i=>i.qty*i.price);
+  const paid=Math.max(0,Math.min(Number($('#posPaid').value)||0,total));
+  const due=total-paid;
+  if(due>0&&!p)return toast('اختر عميلاً للبيع الآجل');
+  const btn=$('#posSave');btn.disabled=true;btn.textContent='جارٍ الحفظ...';
+  const ref=doc(collection(db,'sales'));
+  const rec={owner:S.user.uid,ts:Date.now(),customerId:pid||null,customerName:p?.name||'عميل نقدي',
+    items:S.cart.map(i=>({id:i.id,name:i.name,qty:i.qty,price:i.price})),total,paid,due};
+  try{
+    await setDocRetry(ref,rec);
+    for(const i of S.cart){
+      try{await setDocRetry(doc(db,'products',i.id),{stock:increment(-i.qty)},{merge:true});}catch(e){console.warn(e)}
+    }
+    if(paid>0)await setDocRetry(newLedgerRef(),ledgerData('sale','فاتورة بيع',paid,'in',paid,{ref:ref.id}));
+    if(due>0){
+      await setDocRetry(newLedgerRef(),ledgerData('sale','فاتورة بيع آجل',due,'out',0,{accountId:pid,ref:ref.id}));
+      await setDocRetry(doc(db,'accounts',pid),{balance:increment(due)},{merge:true});
+    }
+    buzz();toast('✅ تم الحفظ — جاهز للفاتورة التالية');
+    S.cart=[];S.posParty='';
+    renderPos();
+  }catch(err){
+    console.error(err);toast('فشل الحفظ: '+(err.code||err.message||''));
+    btn.disabled=false;btn.textContent='💾 حفظ وفتح فاتورة جديدة';
+  }
+}
+
 /* ===== الفواتير ===== */
 function docList(kind){
   const sl=kind==='sale',L=sl?S.sales:S.purchases;
-  A.innerHTML=`<div class="top"><h1>${sl?'المبيعات':'المشتريات'}</h1><button class="btn am sm" id="add">+ فاتورة</button></div>
+  A.innerHTML=`<div class="top"><h1>${sl?'المبيعات':'المشتريات'}</h1><div style="display:flex;gap:6px">${sl?'<button class="btn gr sm" id="posBtn">🛒 بيع سريع</button>':''}<button class="btn am sm" id="add">+ فاتورة</button></div></div>
   <div class="card row"><div><small>الإجمالي</small><div class="big ${sl?'ok':'warn'}">${fmt(sum(L,s=>s.total))}</div></div><small>${L.length} فاتورة</small></div>
   <div class="card">${L.slice(0,60).map(s=>`<div class="item" style="cursor:default"><div><b>${esc(sl?s.customerName||'عميل نقدي':s.supplierName||'مورد')}</b><br><small>${dt(s.ts)} · ${s.items?.length||0} صنف${s.due>0?' · <span class="due">آجل '+n2(s.due)+'</span>':''}</small></div>
   <div style="text-align:left"><b class="${sl?'ok':'warn'}">${fmt(s.total)}</b><br><a class="btn g sm" data-inv="${s.id}" style="margin-top:4px">🖨️ فاتورة</a></div></div>`).join('')||'<p class="hint">لا توجد فواتير</p>'}</div>`;
   $('#add').onclick=()=>go(sl?'sale-new':'purchase-new');
+  if($('#posBtn'))$('#posBtn').onclick=posMode;
   A.querySelectorAll('[data-inv]').forEach(b=>b.onclick=()=>invoicePDF(L.find(x=>x.id===b.dataset.inv),kind));
 }
 function invNew(kind){
@@ -518,7 +681,7 @@ function invNew(kind){
     if(found){
       if(sl&&(found.stock||0)<=0&&!confirm('المخزون منتهي. متابعة؟'))return;
       S.cart.push({id:found.id,name:found.name,qty:1,price:sl?found.price:found.cost});
-      toast('✅ '+found.name+' أُضيف');buzz();drawCart();
+      playScanSound();toast('✅ '+found.name+' أُضيف');drawCart();
     }else{
       if(confirm('منتج جديد بباركود:\n'+code+'\n\nتريد إضافته؟'))productForm(null,code);
     }
