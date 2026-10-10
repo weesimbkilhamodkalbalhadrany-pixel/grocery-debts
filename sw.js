@@ -1,5 +1,5 @@
 // sw.js — تخزين محلي + إشعارات
-const V='v5'; // غيّر الرقم عند كل تحديث كبير لإجبار تحديث الملفات
+const V='v6'; // غيّر الرقم عند كل تحديث كبير لإجبار تحديث الملفات
 const CORE=['/','/index.html','/manifest.json','/icon-192.png','/icon-512.png',
 'https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js',
 'https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js',
