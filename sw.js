@@ -1,29 +1,37 @@
 // sw.js — تخزين محلي + إشعارات
-const V='v6'; // غيّر الرقم عند كل تحديث كبير لإجبار تحديث الملفات
-const CORE=['/','/index.html','/manifest.json','/icon-192.png','/icon-512.png',
+const V='v7'; // غيّر الرقم عند كل تحديث كبير لإجبار تحديث الملفات
+
+// ملفات أساسية: إن فشل تحميل أي منها لا يُفعَّل التحديث ويبقى الكاش القديم يعمل
+const ESSENTIAL=['/','/index.html','/manifest.json','/icon-192.png','/icon-512.png',
 'https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js',
 'https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js',
-'https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js',
-'https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js',
+'https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js'];
+// ملفات اختيارية (تُحمَّل عند الحاجة إن لم تنجح الآن)
+const OPTIONAL=['https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js',
 'https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js',
 'https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js'];
 
-const seen=new Set();
-// يحفظ الملف وكل ما يستورده (مكتبات Firebase تعتمد على ملفات فرعية كثيرة)
-async function deep(c,u){
-  if(seen.has(u))return;seen.add(u);
+// يحفظ الملف وكل ما يستورده؛ يرجع true عند النجاح الكامل
+async function deep(c,u,seen){
+  if(seen.has(u))return true;seen.add(u);
   try{
-    const r=await fetch(u);if(!r.ok)return;
+    const r=await fetch(u);if(!r.ok)return false;
     await c.put(u,r.clone());
-    if(!/\.js(\?|$)/.test(u))return;
+    if(!/\.js(\?|$)/.test(u))return true;
     const t=await r.text(),re=/(?:from|import)\s*\(?\s*["']([^"']+)["']/g,l=[];let m;
     while((m=re.exec(t))){if(/^(\.|https?:)/.test(m[1]))l.push(new URL(m[1],u).href)}
-    await Promise.all(l.map(x=>deep(c,x)));
-  }catch(e){}
+    const res=await Promise.all(l.map(x=>deep(c,x,seen)));
+    return res.every(Boolean);
+  }catch(e){return false}
 }
 self.addEventListener('install',e=>{
-  self.skipWaiting();
-  e.waitUntil(caches.open(V).then(c=>Promise.all(CORE.map(u=>deep(c,u)))));
+  e.waitUntil((async()=>{
+    const c=await caches.open(V),seen=new Set();
+    const res=await Promise.all(ESSENTIAL.map(u=>deep(c,u,seen)));
+    OPTIONAL.forEach(u=>deep(c,u,seen));
+    if(!res.every(Boolean)){await caches.delete(V);throw new Error('sw: incomplete cache')}
+    await self.skipWaiting();
+  })());
 });
 self.addEventListener('activate',e=>e.waitUntil(
   caches.keys().then(k=>Promise.all(k.filter(x=>x!==V).map(x=>caches.delete(x)))).then(()=>self.clients.claim())
@@ -39,7 +47,7 @@ self.addEventListener('fetch',e=>{
   if(u.pathname.endsWith('admin-panel.html'))return;
   e.respondWith(caches.open(V).then(async c=>{
     const key=r.mode==='navigate'&&(u.pathname==='/'||u.pathname==='/index.html')?'/index.html':r;
-    const hit=await c.match(key);
+    const hit=(await c.match(key))||(await caches.match(key));
     const net=fetch(r).then(res=>{if(res&&(res.ok||res.type==='opaque'))c.put(key,res.clone());return res}).catch(()=>null);
     if(hit){e.waitUntil(net);return clean(hit)}
     return (await net)||new Response('غير متصل',{status:503,headers:{'Content-Type':'text/plain;charset=utf-8'}});
