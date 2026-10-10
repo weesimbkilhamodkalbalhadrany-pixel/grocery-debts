@@ -63,6 +63,9 @@ table{width:100%;border-collapse:collapse;font-size:.85rem}th,td{padding:8px;bor
 body.offline #offbar{display:block}body.offline{padding-top:36px}
 #sync{display:none;position:fixed;top:10px;left:10px;background:var(--am);color:#2a1d05;font-size:.7rem;font-weight:800;padding:4px 10px;border-radius:14px;z-index:350}
 body.offline #sync{top:40px}
+#scanbox{width:100%;min-height:270px;border-radius:14px;overflow:hidden;background:#000;position:relative}
+#scanbox video{width:100%!important;height:auto!important;border-radius:14px}
+#scanbox img{display:none}
 @media print{#nav,.btn,.nc,.ic,#sync{display:none!important}body{background:#fff;padding:0}}
 </style>
 </head>
@@ -103,12 +106,17 @@ const pos=b=>Math.max(b||0,0);
 const setNet=()=>document.body.classList.toggle('offline',!navigator.onLine);
 addEventListener('online',()=>{setNet();toast('🌐 عاد الاتصال — جارٍ المزامنة')});addEventListener('offline',()=>{setNet();toast('📡 لا يوجد إنترنت — التسجيل يُحفظ محلياً')});setNet();
 
-/* الكتابة المحلية أولاً */
 const fire=p=>{p.catch(e=>{console.error(e);toast('تعذّرت المزامنة: '+(e.code||e.message||''))});
   return navigator.onLine?Promise.race([p.catch(()=>{}),new Promise(r=>setTimeout(r,1500))]):Promise.resolve()};
 const okMsg=m=>{buzz();toast(navigator.onLine?m:'✅ حُفظ على جهازك — سيُزامن عند عودة الإنترنت')};
 
-const LIBS={qr:['https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js',()=>window.QRCode],chart:['https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js',()=>window.Chart],pdf:['https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js',()=>window.html2pdf]};
+/* ===== المكتبات ===== */
+const LIBS={
+  scan:['https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js',()=>window.Html5Qrcode],
+  qr:['https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js',()=>window.QRCode],
+  chart:['https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js',()=>window.Chart],
+  pdf:['https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js',()=>window.html2pdf]
+};
 const _lp={};
 const need=k=>{const[u,t]=LIBS[k];if(t())return Promise.resolve();return _lp[k]||(_lp[k]=new Promise((ok,no)=>{const e=document.createElement('script');e.src=u;e.onload=ok;e.onerror=()=>{delete _lp[k];no()};document.head.appendChild(e)}))};
 try{document.documentElement.dataset.theme=localStorage.th||''}catch(e){}
@@ -116,18 +124,18 @@ try{document.documentElement.dataset.theme=localStorage.th||''}catch(e){}
 const S={user:null,view:'dashboard',_authTab:'login',customerId:null,supplierId:null,employeeId:null,
 customers:[],suppliers:[],products:[],sales:[],purchases:[],expenses:[],ledger:[],employees:[],
 settings:{name:'الكامل سوفت',currency:'ر.ي',phone:'',address:'',autoWhatsApp:true},
-cart:[],formOpen:false,q:'',cf:'all',per:'d',lt:'',unsubs:[],chart:null,pend:{}};
+cart:[],formOpen:false,q:'',cf:'all',per:'d',lt:'',unsubs:[],chart:null,pend:{},scanner:null,_lastScan:null,_scanCb:null};
 
-/* ===== التنقل مع زر الرجوع ===== */
+/* ===== التنقل ===== */
 let D=1,mOpen=false,mPushed=false,pend=false,hq=[],lastBack=0;
 const H=f=>pend?hq.push(f):f();
 function modal(h){$('#modalBox').innerHTML=h;$('#modal').classList.add('open');
   if(!mOpen){mOpen=true;H(()=>{if(mOpen){history.pushState({m:1,d:D},'');mPushed=true}})}}
-window.closeModal=()=>{if(!mOpen)return;mOpen=false;$('#modal').classList.remove('open');if(mPushed){mPushed=false;pend=true;history.back()}};
+window.closeModal=()=>{if(!mOpen)return;window.stopScanner&&window.stopScanner();mOpen=false;$('#modal').classList.remove('open');if(mPushed){mPushed=false;pend=true;history.back()}};
 const back=()=>D>1?history.back():go('dashboard',null,true);
 addEventListener('popstate',e=>{
   if(pend){pend=false;const q=hq;hq=[];q.forEach(f=>f());return}
-  if(mOpen){mOpen=false;mPushed=false;$('#modal').classList.remove('open');return}
+  if(mOpen){window.stopScanner&&window.stopScanner();mOpen=false;mPushed=false;$('#modal').classList.remove('open');return}
   const st=e.state||{root:1};
   if(st.root){if(Date.now()-lastBack<2000){history.back();return}
     lastBack=Date.now();toast('اضغط رجوع مرة أخرى للخروج');
@@ -168,6 +176,40 @@ function notifyDebt(name,phone,amount,balance,kind){
   $('#wa-go').onclick=()=>{whatsappSend(phone,name,msg);closeModal()};
 }
 const remind=c=>whatsappSend(c.phone,c.name,`نذكّرك بأن رصيد حسابك المستحق *${n2(c.balance)} ${S.settings.currency}*.\nكشف حسابك: ${link(c.id)}`);
+
+/* ===== ✨ قارئ الباركود ===== */
+window.openScanner=cb=>{
+  S._scanCb=cb;
+  modal(`<h2>📷 امسح الباركود</h2>
+  <div id="scanbox"></div>
+  <div id="scanres" class="hint" style="padding:8px 0">وجّه الكاميرا نحو الباركود</div>
+  <button class="btn o w" id="stopscan">إغلاق</button>`);
+  $('#stopscan').onclick=()=>{window.stopScanner();closeModal()};
+  need('scan').then(()=>{
+    S.scanner=new Html5Qrcode("scanbox",{verbose:false});
+    S.scanner.start(
+      {facingMode:"environment"},
+      {fps:12,qrbox:{width:250,height:250},aspectRatio:1.0},
+      code=>{
+        if(S._lastScan===code)return;
+        S._lastScan=code;setTimeout(()=>{S._lastScan=null},1500);
+        buzz();window.stopScanner();closeModal();
+        if(S._scanCb)S._scanCb(code);
+      },
+      ()=>{}
+    ).catch(e=>{
+      const r=$('#scanres');if(r)r.innerHTML=`<b class="due">تعذّر فتح الكاميرا</b><br><small>${esc(e.message||'تأكد من إذن الكاميرا')}</small>`;
+    });
+  }).catch(()=>{
+    const r=$('#scanres');if(r)r.innerHTML='<b class="due">تعذّر تحميل مكتبة المسح</b><br><small>يحتاج إنترنت مرة واحدة</small>';
+  });
+};
+window.stopScanner=()=>{
+  if(S.scanner){
+    try{S.scanner.stop().then(()=>{try{S.scanner.clear()}catch(e){}}).catch(()=>{})}catch(e){}
+    S.scanner=null;
+  }
+};
 
 function nav(){
   const grp={customer:'customers',sale:'sales','sale-new':'sales'};
@@ -295,19 +337,14 @@ function customerForm(c){
     const btn=$('#sv');btn.disabled=true;btn.textContent='جارٍ الحفظ...';
     try{
       const d={name,phone:$('#ph').value.trim(),limit:Number($('#lm').value)||0};
-      if(e){
-        await setDoc(doc(db,'accounts',c.id),d,{merge:true});
-      }else{
+      if(e){await setDoc(doc(db,'accounts',c.id),d,{merge:true});}
+      else{
         const t=newToken(),op=Number($('#op').value)||0;
         await setDoc(doc(db,'accounts',t),{owner:S.user.uid,...d,balance:op,currency:S.settings.currency,createdAt:Date.now()});
         if(op>0)await setDoc(newLedgerRef(),ledgerData('debt','رصيد افتتاحي',op,'out',0,{accountId:t}));
       }
       closeModal();okMsg('تم الحفظ');
-    }catch(err){
-      console.error(err);
-      toast('تعذّر الحفظ: '+(err.code||err.message||''));
-      btn.disabled=false;btn.textContent='حفظ';
-    }
+    }catch(err){console.error(err);toast('تعذّر الحفظ: '+(err.code||err.message||''));btn.disabled=false;btn.textContent='حفظ';}
   };
   if(e)$('#dl').onclick=async()=>{
     if(!confirm('حذف العميل "'+c.name+'"؟'+((c.balance||0)!==0?'\nعليه رصيد '+n2(c.balance)+' — سيُحذف كشف حسابه من الرابط أيضاً.':'')))return;
@@ -329,18 +366,14 @@ function supplierForm(s){
     const name=$('#n').value.trim();if(!name)return toast('اكتب الاسم');
     const btn=$('#sv');btn.disabled=true;btn.textContent='جارٍ الحفظ...';
     try{
-      if(e){
-        await setDoc(doc(db,'suppliers',s.id),{name,phone:$('#ph').value.trim()},{merge:true});
-      }else{
+      if(e){await setDoc(doc(db,'suppliers',s.id),{name,phone:$('#ph').value.trim()},{merge:true});}
+      else{
         const op=Number($('#op').value)||0,t=newToken();
         await setDoc(doc(db,'suppliers',t),{owner:S.user.uid,name,phone:$('#ph').value.trim(),balance:op,createdAt:Date.now()});
         if(op>0)await setDoc(newLedgerRef(),ledgerData('purchase','رصيد افتتاحي مورد',op,'out',0,{supplierId:t}));
       }
       closeModal();okMsg('تم الحفظ');
-    }catch(err){
-      console.error(err);toast('تعذّر الحفظ: '+(err.code||err.message||''));
-      btn.disabled=false;btn.textContent='حفظ';
-    }
+    }catch(err){console.error(err);toast('تعذّر الحفظ: '+(err.code||err.message||''));btn.disabled=false;btn.textContent='حفظ';}
   };
   if(e)$('#dl').onclick=async()=>{
     if(!confirm('حذف المورد "'+s.name+'"؟'))return;
@@ -376,9 +409,7 @@ async function delTx(l,ent,kind){
     await deleteDoc(doc(db,'ledger',l.id));
     await setDoc(doc(db,col,ent.id),{balance:increment(delta)},{merge:true});
     okMsg('تم حذف الحركة');
-  }catch(err){
-    console.error(err);toast('تعذّر الحذف: '+(err.code||err.message||''));
-  }
+  }catch(err){console.error(err);toast('تعذّر الحذف: '+(err.code||err.message||''));}
 }
 
 function amountForm(type,ent,kind){
@@ -413,28 +444,31 @@ function productsList(){
   const st=p=>(p.stock||0)<=0?'due':(p.stock||0)<=(p.min||0)?'warn':'ok';
   listPage({title:'المخزون',add:'+ منتج',onAdd:()=>productForm(),
     head:`<div class="g2"><div class="stat"><div class="l">عدد المنتجات</div><div class="n">${S.products.length}</div></div><div class="stat"><div class="l">قيمة المخزون</div><div class="n blue">${fmt(sum(S.products,p=>(p.stock||0)*(p.cost||0)))}</div></div></div>`,
-    rows:q=>S.products.filter(p=>!q||p.name.toLowerCase().includes(q)).sort((a,b)=>a.name.localeCompare(b.name))
-      .map(p=>`<div class="item" data-id="${p.id}"><div><b>${esc(p.name)}</b><br><small>${esc(p.unit||'حبة')} · تكلفة ${n2(p.cost)} · بيع ${n2(p.price)}</small></div><div style="text-align:left"><b class="${st(p)}">${n2(p.stock)}</b><br><small>ربح ${n2((p.price||0)-(p.cost||0))}</small></div></div>`).join(''),
+    rows:q=>S.products.filter(p=>!q||p.name.toLowerCase().includes(q)||(p.barcode||'').includes(q)).sort((a,b)=>a.name.localeCompare(b.name))
+      .map(p=>`<div class="item" data-id="${p.id}"><div><b>${esc(p.name)}</b>${p.barcode?`<br><small style="color:var(--m);font-size:.68rem">🏷 ${esc(p.barcode)}</small>`:''}<br><small>${esc(p.unit||'حبة')} · تكلفة ${n2(p.cost)} · بيع ${n2(p.price)}</small></div><div style="text-align:left"><b class="${st(p)}">${n2(p.stock)}</b><br><small>ربح ${n2((p.price||0)-(p.cost||0))}</small></div></div>`).join(''),
     click:id=>productForm(S.products.find(p=>p.id===id))});
 }
-function productForm(p){
+function productForm(p,presetBarcode){
   const e=!!p;
   modal(`<h2>${e?'تعديل منتج':'منتج جديد'}</h2><label>اسم المنتج *</label><input id="n" value="${esc(p?.name||'')}">
+  <label>الباركود (اختياري)</label>
+  <div style="display:flex;gap:6px;margin:5px 0;align-items:stretch">
+    <input id="bc" value="${esc(p?.barcode||presetBarcode||'')}" placeholder="امسح أو اكتب يدوياً" style="margin:0">
+    <button class="btn am" id="scanbc" style="flex:0 0 auto;margin:0;padding:10px 14px">📷</button>
+  </div>
   <div class="g2"><div><label>الوحدة</label><input id="u" value="${esc(p?.unit||'حبة')}"></div><div><label>الكمية</label><input id="st" type="number" value="${p?.stock??0}"></div></div>
   <div class="g2"><div><label>سعر التكلفة</label><input id="co" type="number" value="${p?.cost??0}"></div><div><label>سعر البيع</label><input id="pr" type="number" value="${p?.price??0}"></div></div>
   <label>حد التنبيه</label><input id="mn" type="number" value="${p?.min??0}">${btns()}${e?delBtn:''}`);
+  $('#scanbc').onclick=()=>window.openScanner(code=>{const f=$('#bc');if(f){f.value=code;toast('✅ باركود: '+code);buzz()}});
   $('#sv').onclick=async()=>{
     const name=$('#n').value.trim();if(!name)return toast('اكتب الاسم');
     const btn=$('#sv');btn.disabled=true;btn.textContent='جارٍ الحفظ...';
     try{
-      const d={name,unit:$('#u').value.trim()||'حبة',stock:Number($('#st').value)||0,cost:Number($('#co').value)||0,price:Number($('#pr').value)||0,min:Number($('#mn').value)||0};
+      const d={name,barcode:$('#bc').value.trim(),unit:$('#u').value.trim()||'حبة',stock:Number($('#st').value)||0,cost:Number($('#co').value)||0,price:Number($('#pr').value)||0,min:Number($('#mn').value)||0};
       if(e)await setDoc(doc(db,'products',p.id),d,{merge:true});
       else await setDoc(doc(collection(db,'products')),{owner:S.user.uid,...d,createdAt:Date.now()});
       closeModal();okMsg('تم الحفظ');
-    }catch(err){
-      console.error(err);toast('تعذّر الحفظ: '+(err.code||err.message||''));
-      btn.disabled=false;btn.textContent='حفظ';
-    }
+    }catch(err){console.error(err);toast('تعذّر الحفظ: '+(err.code||err.message||''));btn.disabled=false;btn.textContent='حفظ';}
   };
   if(e)$('#dl').onclick=async()=>{
     if(!confirm('حذف المنتج "'+p.name+'"؟'))return;
@@ -457,13 +491,25 @@ function invNew(kind){
   S.formOpen=true;const sl=kind==='sale',P=sl?S.customers:S.suppliers,pre=sl?'':S.supplierId;
   A.innerHTML=`<div class="top"><button class="btn g sm" id="bk">→ رجوع</button><h1>فاتورة ${sl?'بيع':'شراء'}</h1><span></span></div>
   <div class="card"><label>${sl?'العميل':'المورد'}</label><select id="party"><option value="">${sl?'عميل نقدي':'مورد نقدي'}</option>${P.map(c=>`<option value="${c.id}" ${pre===c.id?'selected':''}>${esc(c.name)} (${n2(c.balance)})</option>`).join('')}</select></div>
-  <div class="card"><label>إضافة صنف</label><select id="prod"><option value="">اختر منتجاً...</option>${S.products.map(p=>`<option value="${p.id}">${esc(p.name)} — ${n2(sl?p.price:p.cost)}${sl?' (متاح '+n2(p.stock)+')':''}</option>`).join('')}</select>
+  <div class="card"><label>إضافة صنف</label>
+  <button class="btn am w sm" id="scanBtn" style="margin:2px 0 8px">📷 امسح باركود منتج</button>
+  <select id="prod"><option value="">اختر منتجاً...</option>${S.products.map(p=>`<option value="${p.id}">${esc(p.name)} — ${n2(sl?p.price:p.cost)}${sl?' (متاح '+n2(p.stock)+')':''}</option>`).join('')}</select>
   <div class="g2"><input id="qty" type="number" placeholder="الكمية" value="1"><input id="prc" type="number" placeholder="السعر"></div><button class="btn o w sm" id="addIt">+ إضافة للفاتورة</button></div>
   <div class="card"><b>الأصناف</b><div id="cart"></div></div>
   <div class="card"><div class="row"><span>الإجمالي</span><b class="big ${sl?'ok':'warn'}" id="tot" style="font-size:1.3rem">0</b></div>
   <label>المدفوع نقداً (الباقي يُسجَّل آجلاً)</label><input id="paid" type="number" placeholder="0"><button class="btn am w" id="save">💾 حفظ الفاتورة</button></div>`;
   $('#bk').onclick=back;
   $('#prod').onchange=e=>{const p=S.products.find(x=>x.id===e.target.value);if(p)$('#prc').value=sl?p.price:p.cost};
+  $('#scanBtn').onclick=()=>window.openScanner(code=>{
+    const found=S.products.find(x=>x.barcode===code);
+    if(found){
+      if(sl&&(found.stock||0)<=0&&!confirm('المخزون منتهي. متابعة؟'))return;
+      S.cart.push({id:found.id,name:found.name,qty:1,price:sl?found.price:found.cost});
+      toast('✅ '+found.name+' أُضيف');buzz();drawCart();
+    }else{
+      if(confirm('منتج جديد بباركود:\n'+code+'\n\nتريد إضافته؟'))productForm(null,code);
+    }
+  });
   $('#addIt').onclick=()=>{const p=S.products.find(x=>x.id===$('#prod').value);if(!p)return toast('اختر منتجاً');
     const q=Number($('#qty').value)||0,pr=Number($('#prc').value)||(sl?p.price:p.cost);if(q<=0)return toast('كمية غير صحيحة');
     if(sl&&q>(p.stock||0)&&!confirm('الكمية أكبر من المتاح في المخزون. متابعة؟'))return;
@@ -486,16 +532,13 @@ async function saveInv(kind){
     items:S.cart.map(i=>({id:i.id,name:i.name,qty:i.qty,price:i.price})),total,paid,due};
   const saved={id:ref.id,ts:Date.now(),[sl?'customerName':'supplierName']:p?.name||(sl?'عميل نقدي':'مورد نقدي'),items:[...S.cart],total,paid,due};
   try{
-    /* 1) الفاتورة */
     await setDoc(ref,rec);
-    /* 2) المخزون بالتسلسل */
     for(const i of S.cart){
       try{
         if(sl)await setDoc(doc(db,'products',i.id),{stock:increment(-i.qty)},{merge:true});
         else await setDoc(doc(db,'products',i.id),{stock:increment(i.qty),cost:i.price},{merge:true});
       }catch(e){console.warn('stock',e)}
     }
-    /* 3) الحركات المالية */
     if(paid>0)await setDoc(newLedgerRef(),ledgerData(sl?'sale':'purchase',sl?'فاتورة بيع':'فاتورة شراء',paid,sl?'in':'out',sl?paid:-paid,{ref:ref.id}));
     if(due>0){
       await setDoc(newLedgerRef(),ledgerData(sl?'sale':'purchase',sl?'فاتورة بيع آجل':'فاتورة شراء آجل',due,'out',0,{[idf]:pid,ref:ref.id}));
@@ -504,10 +547,7 @@ async function saveInv(kind){
     S.formOpen=false;S.cart=[];okMsg('✅ تم حفظ الفاتورة');go(sl?'sales':'purchases',null,true);
     setTimeout(()=>{modal(`<h2>تم حفظ الفاتورة ✅</h2><p style="margin:10px 0;font-size:.9rem">هل تريد طباعة الفاتورة؟</p><div class="row"><button class="btn o w" onclick="closeModal()">إغلاق</button><button class="btn w" id="pv">🖨️ طباعة PDF</button></div>`);
       $('#pv').onclick=()=>{closeModal();invoicePDF(saved,kind)}},500);
-  }catch(err){
-    console.error(err);toast('فشل حفظ الفاتورة: '+(err.code||err.message||''));
-    svBtn.disabled=false;svBtn.textContent='💾 حفظ الفاتورة';
-  }
+  }catch(err){console.error(err);toast('فشل حفظ الفاتورة: '+(err.code||err.message||''));svBtn.disabled=false;svBtn.textContent='💾 حفظ الفاتورة';}
 }
 
 /* ===== المصروفات ===== */
@@ -528,10 +568,7 @@ function expenseForm(){
       await setDoc(doc(collection(db,'expenses')),{owner:S.user.uid,ts:Date.now(),category:cat,amount,note:nt});
       await setDoc(newLedgerRef(),ledgerData('expense','مصروف: '+cat,amount,'out',-amount,{note:nt}));
       closeModal();okMsg('تم التسجيل');
-    }catch(err){
-      console.error(err);toast('تعذّر الحفظ: '+(err.code||err.message||''));
-      btn.disabled=false;btn.textContent='حفظ';
-    }
+    }catch(err){console.error(err);toast('تعذّر الحفظ: '+(err.code||err.message||''));btn.disabled=false;btn.textContent='حفظ';}
   };
 }
 
@@ -552,18 +589,14 @@ function employeeForm(emp){
     const btn=$('#sv');btn.disabled=true;btn.textContent='جارٍ الحفظ...';
     try{
       const d={name,position:$('#po').value.trim(),phone:$('#ph').value.trim(),salary:Number($('#sa').value)||0};
-      if(e){
-        await setDoc(doc(db,'employees',emp.id),d,{merge:true});
-      }else{
+      if(e){await setDoc(doc(db,'employees',emp.id),d,{merge:true});}
+      else{
         const op=Number($('#op').value)||0,r=doc(collection(db,'employees'));
         await setDoc(r,{owner:S.user.uid,...d,balance:op,createdAt:Date.now()});
         if(op>0)await setDoc(newLedgerRef(),ledgerData('advance','سحبيات سابقة',op,'out',-op,{employeeId:r.id}));
       }
       closeModal();okMsg('تم الحفظ');
-    }catch(err){
-      console.error(err);toast('تعذّر الحفظ: '+(err.code||err.message||''));
-      btn.disabled=false;btn.textContent='حفظ';
-    }
+    }catch(err){console.error(err);toast('تعذّر الحفظ: '+(err.code||err.message||''));btn.disabled=false;btn.textContent='حفظ';}
   };
   if(e)$('#dl').onclick=async()=>{
     if(!confirm('حذف الموظف "'+emp.name+'"؟'))return;
@@ -595,10 +628,7 @@ function employeeAmountForm(type,emp){
       await setDoc(newLedgerRef(),ledgerData(type,Lb.title,amount,Lb.dir,Lb.cash*amount,{employeeId:emp.id,note:$('#nt').value.trim()}));
       await setDoc(doc(db,'employees',emp.id),{balance:increment(Lb.sign*amount)},{merge:true});
       closeModal();okMsg('✅ تم التسجيل');
-    }catch(err){
-      console.error(err);$('#err').textContent='فشل: '+(err.code||err.message);$('#err').style.display='block';
-      b.disabled=false;b.textContent='تأكيد';
-    }
+    }catch(err){console.error(err);$('#err').textContent='فشل: '+(err.code||err.message);$('#err').style.display='block';b.disabled=false;b.textContent='تأكيد';}
   };
 }
 
