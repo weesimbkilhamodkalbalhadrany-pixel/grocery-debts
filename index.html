@@ -82,11 +82,11 @@ a.innerHTML='<div style="text-align:center;padding:70px 20px"><div style="font-s
 <script type="module">
 import{initializeApp}from"https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
 import{getAuth,GoogleAuthProvider,signInWithPopup,onAuthStateChanged,signOut,signInWithEmailAndPassword,createUserWithEmailAndPassword,sendPasswordResetEmail,setPersistence,browserLocalPersistence}from"https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
-import{getFirestore,initializeFirestore,persistentLocalCache,persistentMultipleTabManager,doc,setDoc,getDoc,collection,query,where,orderBy,onSnapshot,increment,updateDoc,deleteDoc}from"https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+import{getFirestore,initializeFirestore,persistentLocalCache,persistentSingleTabManager,doc,setDoc,getDoc,collection,query,where,orderBy,onSnapshot,increment,updateDoc,deleteDoc}from"https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
 
 const fb=initializeApp({apiKey:"AIzaSyDaLsIF93OD-Lr9y51j_s4wB9OzahLUiTQ",authDomain:"grocery-debts.firebaseapp.com",projectId:"grocery-debts",storageBucket:"grocery-debts.firebasestorage.app",messagingSenderId:"484535933298",appId:"1:484535933298:web:87f8e2ea08a6d26231e5eb"});
 const auth=getAuth(fb);let db;
-try{db=initializeFirestore(fb,{localCache:persistentLocalCache({tabManager:persistentMultipleTabManager()})})}catch(e){db=getFirestore(fb)}
+try{db=initializeFirestore(fb,{localCache:persistentLocalCache({tabManager:persistentSingleTabManager()}),experimentalAutoDetectLongPolling:true})}catch(e){db=getFirestore(fb)}
 
 /* ===== أدوات ===== */
 const $=s=>document.querySelector(s),A=$('#app'),N=$('#nav');
@@ -109,6 +109,19 @@ addEventListener('online',()=>{setNet();toast('🌐 عاد الاتصال — ج
 const fire=p=>{p.catch(e=>{console.error(e);toast('تعذّرت المزامنة: '+(e.code||e.message||''))});
   return navigator.onLine?Promise.race([p.catch(()=>{}),new Promise(r=>setTimeout(r,1500))]):Promise.resolve()};
 const okMsg=m=>{buzz();toast(navigator.onLine?m:'✅ حُفظ على جهازك — سيُزامن عند عودة الإنترنت')};
+
+/* ⭐ setDocRetry — إعادة محاولة تلقائية عند فشل Firebase الداخلي */
+const setDocRetry=async(ref,data,opt)=>{
+  try{return await setDoc(ref,data,opt||{})}
+  catch(e){
+    const msg=String(e.message||e.code||'');
+    if(msg.includes('INTERNAL')||msg.includes('UNAVAILABLE')||e.code==='internal'||e.code==='unavailable'){
+      await new Promise(r=>setTimeout(r,900));
+      return await setDoc(ref,data,opt||{});
+    }
+    throw e;
+  }
+};
 
 /* ===== المكتبات ===== */
 const LIBS={
@@ -273,7 +286,7 @@ function loginView(){
     try{await setPersistence(auth,browserLocalPersistence);
       if(reg){const name=$('#a-name').value.trim();if(!name)throw{code:'auth/missing-name'};
         const cr=await createUserWithEmailAndPassword(auth,email,pass);
-        await setDoc(doc(db,'settings',cr.user.uid),{name,currency:'ر.ي',phone:'',address:'',autoWhatsApp:true},{merge:true});toast('تم إنشاء الحساب')}
+        await setDocRetry(doc(db,'settings',cr.user.uid),{name,currency:'ر.ي',phone:'',address:'',autoWhatsApp:true},{merge:true});toast('تم إنشاء الحساب')}
       else{await signInWithEmailAndPassword(auth,email,pass);toast('مرحباً بك')}
     }catch(e){$('#a-go').disabled=false;toast(authErr(e))}};
   $('#a-pass').addEventListener('keydown',e=>{if(e.key==='Enter')$('#a-go').click()});
@@ -337,11 +350,11 @@ function customerForm(c){
     const btn=$('#sv');btn.disabled=true;btn.textContent='جارٍ الحفظ...';
     try{
       const d={name,phone:$('#ph').value.trim(),limit:Number($('#lm').value)||0};
-      if(e){await setDoc(doc(db,'accounts',c.id),d,{merge:true});}
+      if(e){await setDocRetry(doc(db,'accounts',c.id),d,{merge:true});}
       else{
         const t=newToken(),op=Number($('#op').value)||0;
-        await setDoc(doc(db,'accounts',t),{owner:S.user.uid,...d,balance:op,currency:S.settings.currency,createdAt:Date.now()});
-        if(op>0)await setDoc(newLedgerRef(),ledgerData('debt','رصيد افتتاحي',op,'out',0,{accountId:t}));
+        await setDocRetry(doc(db,'accounts',t),{owner:S.user.uid,...d,balance:op,currency:S.settings.currency,createdAt:Date.now()});
+        if(op>0)await setDocRetry(newLedgerRef(),ledgerData('debt','رصيد افتتاحي',op,'out',0,{accountId:t}));
       }
       closeModal();okMsg('تم الحفظ');
     }catch(err){console.error(err);toast('تعذّر الحفظ: '+(err.code||err.message||''));btn.disabled=false;btn.textContent='حفظ';}
@@ -366,11 +379,11 @@ function supplierForm(s){
     const name=$('#n').value.trim();if(!name)return toast('اكتب الاسم');
     const btn=$('#sv');btn.disabled=true;btn.textContent='جارٍ الحفظ...';
     try{
-      if(e){await setDoc(doc(db,'suppliers',s.id),{name,phone:$('#ph').value.trim()},{merge:true});}
+      if(e){await setDocRetry(doc(db,'suppliers',s.id),{name,phone:$('#ph').value.trim()},{merge:true});}
       else{
         const op=Number($('#op').value)||0,t=newToken();
-        await setDoc(doc(db,'suppliers',t),{owner:S.user.uid,name,phone:$('#ph').value.trim(),balance:op,createdAt:Date.now()});
-        if(op>0)await setDoc(newLedgerRef(),ledgerData('purchase','رصيد افتتاحي مورد',op,'out',0,{supplierId:t}));
+        await setDocRetry(doc(db,'suppliers',t),{owner:S.user.uid,name,phone:$('#ph').value.trim(),balance:op,createdAt:Date.now()});
+        if(op>0)await setDocRetry(newLedgerRef(),ledgerData('purchase','رصيد افتتاحي مورد',op,'out',0,{supplierId:t}));
       }
       closeModal();okMsg('تم الحفظ');
     }catch(err){console.error(err);toast('تعذّر الحفظ: '+(err.code||err.message||''));btn.disabled=false;btn.textContent='حفظ';}
@@ -407,7 +420,7 @@ async function delTx(l,ent,kind){
     const delta=l.dir==='out'?-l.amount:l.amount;
     const col=kind==='customer'?'accounts':'suppliers';
     await deleteDoc(doc(db,'ledger',l.id));
-    await setDoc(doc(db,col,ent.id),{balance:increment(delta)},{merge:true});
+    await setDocRetry(doc(db,col,ent.id),{balance:increment(delta)},{merge:true});
     okMsg('تم حذف الحركة');
   }catch(err){console.error(err);toast('تعذّر الحذف: '+(err.code||err.message||''));}
 }
@@ -427,8 +440,8 @@ function amountForm(type,ent,kind){
     const svBtn=$('#sv');svBtn.disabled=true;svBtn.textContent='جارٍ الحفظ...';$('#err').style.display='none';
     try{
       const col=isCust?'accounts':'suppliers',extra=isCust?{accountId:ent.id}:{supplierId:ent.id};
-      await setDoc(newLedgerRef(),ledgerData(isDebt?'debt':'payment',isDebt?'دين':'دفعة',amount,isDebt?'out':'in',isDebt?0:(isCust?amount:-amount),{...extra,note:$('#nt').value.trim()}));
-      await setDoc(doc(db,col,ent.id),{balance:increment(isDebt?amount:-amount)},{merge:true});
+      await setDocRetry(newLedgerRef(),ledgerData(isDebt?'debt':'payment',isDebt?'دين':'دفعة',amount,isDebt?'out':'in',isDebt?0:(isCust?amount:-amount),{...extra,note:$('#nt').value.trim()}));
+      await setDocRetry(doc(db,col,ent.id),{balance:increment(isDebt?amount:-amount)},{merge:true});
       closeModal();okMsg('✅ تم التسجيل بنجاح');
       const note=$('#nt').value.trim(),cur=S.settings.currency||'ر.ي',now=new Date();
       let m=`مرحباً ${ent.name} 👋\n`+(isDebt?`🔴 تم تسجيل دين جديد بقيمة: ${amount} ${cur}\n`:`🟢 تم تسجيل دفعة بقيمة: ${amount} ${cur}\n`);
@@ -464,9 +477,9 @@ function productForm(p,presetBarcode){
     const name=$('#n').value.trim();if(!name)return toast('اكتب الاسم');
     const btn=$('#sv');btn.disabled=true;btn.textContent='جارٍ الحفظ...';
     try{
-      const d={name,barcode:$('#bc').value.trim(),unit:$('#u').value.trim()||'حبة',stock:Number($('#st').value)||0,cost:Number($('#co').value)||0,price:Number($('#pr').value)||0,min:Number($('#mn').value)||0};
-      if(e)await setDoc(doc(db,'products',p.id),d,{merge:true});
-      else await setDoc(doc(collection(db,'products')),{owner:S.user.uid,...d,createdAt:Date.now()});
+      const d={name,barcode:String($('#bc').value.trim()),unit:$('#u').value.trim()||'حبة',stock:Number($('#st').value)||0,cost:Number($('#co').value)||0,price:Number($('#pr').value)||0,min:Number($('#mn').value)||0};
+      if(e)await setDocRetry(doc(db,'products',p.id),d,{merge:true});
+      else await setDocRetry(doc(collection(db,'products')),{owner:S.user.uid,...d,createdAt:Date.now()});
       closeModal();okMsg('تم الحفظ');
     }catch(err){console.error(err);toast('تعذّر الحفظ: '+(err.code||err.message||''));btn.disabled=false;btn.textContent='حفظ';}
   };
@@ -532,17 +545,17 @@ async function saveInv(kind){
     items:S.cart.map(i=>({id:i.id,name:i.name,qty:i.qty,price:i.price})),total,paid,due};
   const saved={id:ref.id,ts:Date.now(),[sl?'customerName':'supplierName']:p?.name||(sl?'عميل نقدي':'مورد نقدي'),items:[...S.cart],total,paid,due};
   try{
-    await setDoc(ref,rec);
+    await setDocRetry(ref,rec);
     for(const i of S.cart){
       try{
-        if(sl)await setDoc(doc(db,'products',i.id),{stock:increment(-i.qty)},{merge:true});
-        else await setDoc(doc(db,'products',i.id),{stock:increment(i.qty),cost:i.price},{merge:true});
+        if(sl)await setDocRetry(doc(db,'products',i.id),{stock:increment(-i.qty)},{merge:true});
+        else await setDocRetry(doc(db,'products',i.id),{stock:increment(i.qty),cost:i.price},{merge:true});
       }catch(e){console.warn('stock',e)}
     }
-    if(paid>0)await setDoc(newLedgerRef(),ledgerData(sl?'sale':'purchase',sl?'فاتورة بيع':'فاتورة شراء',paid,sl?'in':'out',sl?paid:-paid,{ref:ref.id}));
+    if(paid>0)await setDocRetry(newLedgerRef(),ledgerData(sl?'sale':'purchase',sl?'فاتورة بيع':'فاتورة شراء',paid,sl?'in':'out',sl?paid:-paid,{ref:ref.id}));
     if(due>0){
-      await setDoc(newLedgerRef(),ledgerData(sl?'sale':'purchase',sl?'فاتورة بيع آجل':'فاتورة شراء آجل',due,'out',0,{[idf]:pid,ref:ref.id}));
-      await setDoc(doc(db,pc,pid),{balance:increment(due)},{merge:true});
+      await setDocRetry(newLedgerRef(),ledgerData(sl?'sale':'purchase',sl?'فاتورة بيع آجل':'فاتورة شراء آجل',due,'out',0,{[idf]:pid,ref:ref.id}));
+      await setDocRetry(doc(db,pc,pid),{balance:increment(due)},{merge:true});
     }
     S.formOpen=false;S.cart=[];okMsg('✅ تم حفظ الفاتورة');go(sl?'sales':'purchases',null,true);
     setTimeout(()=>{modal(`<h2>تم حفظ الفاتورة ✅</h2><p style="margin:10px 0;font-size:.9rem">هل تريد طباعة الفاتورة؟</p><div class="row"><button class="btn o w" onclick="closeModal()">إغلاق</button><button class="btn w" id="pv">🖨️ طباعة PDF</button></div>`);
@@ -565,8 +578,8 @@ function expenseForm(){
     const btn=$('#sv');btn.disabled=true;btn.textContent='جارٍ الحفظ...';
     try{
       const cat=$('#cat').value,nt=$('#nt').value.trim();
-      await setDoc(doc(collection(db,'expenses')),{owner:S.user.uid,ts:Date.now(),category:cat,amount,note:nt});
-      await setDoc(newLedgerRef(),ledgerData('expense','مصروف: '+cat,amount,'out',-amount,{note:nt}));
+      await setDocRetry(doc(collection(db,'expenses')),{owner:S.user.uid,ts:Date.now(),category:cat,amount,note:nt});
+      await setDocRetry(newLedgerRef(),ledgerData('expense','مصروف: '+cat,amount,'out',-amount,{note:nt}));
       closeModal();okMsg('تم التسجيل');
     }catch(err){console.error(err);toast('تعذّر الحفظ: '+(err.code||err.message||''));btn.disabled=false;btn.textContent='حفظ';}
   };
@@ -589,11 +602,11 @@ function employeeForm(emp){
     const btn=$('#sv');btn.disabled=true;btn.textContent='جارٍ الحفظ...';
     try{
       const d={name,position:$('#po').value.trim(),phone:$('#ph').value.trim(),salary:Number($('#sa').value)||0};
-      if(e){await setDoc(doc(db,'employees',emp.id),d,{merge:true});}
+      if(e){await setDocRetry(doc(db,'employees',emp.id),d,{merge:true});}
       else{
         const op=Number($('#op').value)||0,r=doc(collection(db,'employees'));
-        await setDoc(r,{owner:S.user.uid,...d,balance:op,createdAt:Date.now()});
-        if(op>0)await setDoc(newLedgerRef(),ledgerData('advance','سحبيات سابقة',op,'out',-op,{employeeId:r.id}));
+        await setDocRetry(r,{owner:S.user.uid,...d,balance:op,createdAt:Date.now()});
+        if(op>0)await setDocRetry(newLedgerRef(),ledgerData('advance','سحبيات سابقة',op,'out',-op,{employeeId:r.id}));
       }
       closeModal();okMsg('تم الحفظ');
     }catch(err){console.error(err);toast('تعذّر الحفظ: '+(err.code||err.message||''));btn.disabled=false;btn.textContent='حفظ';}
@@ -625,8 +638,8 @@ function employeeAmountForm(type,emp){
     const amount=Number($('#am').value);if(!(amount>0))return toast('أدخل مبلغاً صحيحاً');
     const b=$('#sv');b.disabled=true;b.textContent='جارٍ الحفظ...';
     try{
-      await setDoc(newLedgerRef(),ledgerData(type,Lb.title,amount,Lb.dir,Lb.cash*amount,{employeeId:emp.id,note:$('#nt').value.trim()}));
-      await setDoc(doc(db,'employees',emp.id),{balance:increment(Lb.sign*amount)},{merge:true});
+      await setDocRetry(newLedgerRef(),ledgerData(type,Lb.title,amount,Lb.dir,Lb.cash*amount,{employeeId:emp.id,note:$('#nt').value.trim()}));
+      await setDocRetry(doc(db,'employees',emp.id),{balance:increment(Lb.sign*amount)},{merge:true});
       closeModal();okMsg('✅ تم التسجيل');
     }catch(err){console.error(err);$('#err').textContent='فشل: '+(err.code||err.message);$('#err').style.display='block';b.disabled=false;b.textContent='تأكيد';}
   };
@@ -666,7 +679,7 @@ function settingsView(){
   <div class="card"><button class="btn o w" id="bk">💾 نسخة احتياطية (JSON)</button></div>`;
   $('#sv').onclick=async()=>{S.settings={...S.settings,name:$('#nm').value.trim()||'الكامل سوفت',currency:$('#cu').value.trim()||'ر.ي',phone:$('#ph').value.trim(),address:$('#ad').value.trim(),autoWhatsApp:$('#wa').checked};
     try{localStorage.st=JSON.stringify(S.settings)}catch(e){}
-    await fire(setDoc(doc(db,'settings',S.user.uid),S.settings,{merge:true}));okMsg('تم الحفظ');render()};
+    await fire(setDocRetry(doc(db,'settings',S.user.uid),S.settings,{merge:true}));okMsg('تم الحفظ');render()};
   $('#bk').onclick=()=>{const d={settings:S.settings,customers:S.customers,suppliers:S.suppliers,products:S.products,sales:S.sales,purchases:S.purchases,expenses:S.expenses,ledger:S.ledger,employees:S.employees};
     const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([JSON.stringify(d,null,2)],{type:'application/json'}));a.download='backup-'+Date.now()+'.json';a.click()};
 }
