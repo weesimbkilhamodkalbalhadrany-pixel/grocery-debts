@@ -8,6 +8,11 @@
 <link rel="manifest" href="/manifest.json">
 <link rel="icon" type="image/png" href="/icon-192.png">
 <link rel="apple-touch-icon" href="/icon-192.png">
+<!-- تسريع: اتصال مبكر وتحميل متوازي لمكتبات Firebase -->
+<link rel="preconnect" href="https://www.gstatic.com" crossorigin>
+<link rel="modulepreload" href="https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js">
+<link rel="modulepreload" href="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js">
+<link rel="modulepreload" href="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js">
 <title>الكامل سوفت — نظام محاسبي متكامل</title>
 <style>
 :root{--ink:#14283b;--ink2:#1f4466;--am:#f4a93a;--bg:#f3f5f8;--c:#fff;--t:#14212e;--m:#6c7a89;--bd:#e3e8ee;--red:#e5484d;--grn:#1f9d6b;--blu:#3b7de0;--pur:#7a5af8;--org:#e8862b}
@@ -63,6 +68,11 @@ table{width:100%;border-collapse:collapse;font-size:.85rem}th,td{padding:8px;bor
 body.offline #offbar{display:block}body.offline{padding-top:36px}
 #sync{display:none;position:fixed;top:10px;left:10px;background:var(--am);color:#2a1d05;font-size:.7rem;font-weight:800;padding:4px 10px;border-radius:14px;z-index:350}
 body.offline #sync{top:40px}
+/* شاشة البداية والهيكل المؤقت */
+.spin{width:34px;height:34px;border:4px solid var(--bd);border-top-color:var(--am);border-radius:50%;animation:rot .8s linear infinite;margin:16px auto}
+@keyframes rot{to{transform:rotate(360deg)}}
+.sk{background:linear-gradient(90deg,var(--bd),var(--c),var(--bd));background-size:200% 100%;animation:shm 1.2s ease-in-out infinite;border-radius:16px}
+@keyframes shm{to{background-position:-200% 0}}
 #scanbox{width:100%;min-height:290px;border-radius:18px;overflow:hidden;background:#000;position:relative}
 #scanbox video{width:100%!important;height:auto!important;border-radius:18px}
 #scanbox img{display:none}
@@ -107,23 +117,32 @@ body.offline #sync{top:40px}
 </style>
 </head>
 <body>
-<div id="offbar">📡 وضع بدون إنترنت — كل ما تسجّله يُحفظ في هاتفك ويُرسل للسيرفر تلقائياً عند عودة الاتصال</div><div id="sync">⏳ بانتظار المزامنة</div><div id="app"></div><nav id="nav"></nav><div id="toast"></div>
+<div id="offbar">📡 وضع بدون إنترنت — كل ما تسجّله يُحفظ في هاتفك ويُرسل للسيرفر تلقائياً عند عودة الاتصال</div><div id="sync">⏳ بانتظار المزامنة</div>
+<div id="app"><div id="splash" style="text-align:center;padding:90px 0 0"><img class="lg" src="icon-192.png" alt=""><h1 id="splName">الكامل سوفت</h1><div class="spin"></div><small id="splMsg">جارٍ التحميل…</small></div></div>
+<nav id="nav"></nav><div id="toast"></div>
 <div id="modal" class="modal" onclick="if(event.target.id==='modal')closeModal()"><div class="modal-box" id="modalBox"></div></div>
 
 <script>
 window._err=[];
 addEventListener('error',e=>{window._err.push((e.message||(e.target&&(e.target.src||e.target.href))||'').toString().slice(0,80))},true);
-setTimeout(()=>{const a=document.getElementById('app');if(a&&!a.innerHTML.trim()){
-a.innerHTML='<div style="text-align:center;padding:70px 20px"><div style="font-size:3rem">📡</div><h2>تعذّر تشغيل التطبيق</h2><p style="color:#6c7a89;margin:10px 0;font-size:.9rem">افتح التطبيق مرة واحدة مع إنترنت ليحفظ ملفاته، ثم جرّبه بدونه.</p><button class="btn" onclick="location.reload()">إعادة المحاولة</button><p style="color:#999;font-size:.65rem;margin-top:14px;direction:ltr">'+window._err.join(' | ')+'</p></div>'}},6000);
+try{const s=JSON.parse(localStorage.st||'{}');if(s.name)document.getElementById('splName').textContent=s.name}catch(e){}
+setTimeout(()=>{const m=document.getElementById('splMsg');if(m&&!window._ready)m.textContent='الاتصال بطيء… ما زال التحميل جارياً'},4000);
+setTimeout(()=>{if(window._ready)return;const a=document.getElementById('app');if(!a)return;
+a.innerHTML='<div style="text-align:center;padding:70px 20px"><div style="font-size:3rem">📡</div><h2>تعذّر تشغيل التطبيق</h2><p style="color:#e5484d;font-size:.8rem;margin-top:8px">'+(window._mod?'حدث خطأ أثناء التشغيل':'لم تُحمَّل مكتبات Firebase — تحقق من الإنترنت أو أوقف الـ VPN')+'</p><p style="color:#6c7a89;margin:10px 0;font-size:.9rem">افتح التطبيق مرة واحدة مع إنترنت ليحفظ ملفاته، ثم جرّبه بدونه.</p><button class="btn" onclick="location.reload()">إعادة المحاولة</button><br><br><button class="btn o" onclick="(async()=>{try{for(const r of await navigator.serviceWorker.getRegistrations())await r.unregister();for(const k of await caches.keys())await caches.delete(k)}catch(e){}location.reload()})()">🧹 مسح الكاش وإعادة التحميل</button><p style="color:#999;font-size:.65rem;margin-top:14px;direction:ltr">'+window._err.join(' | ')+'</p></div>'},15000);
 </script>
 <script type="module">
 import{initializeApp}from"https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
-import{getAuth,GoogleAuthProvider,signInWithPopup,onAuthStateChanged,signOut,signInWithEmailAndPassword,createUserWithEmailAndPassword,sendPasswordResetEmail,setPersistence,browserLocalPersistence}from"https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
+import{getAuth,initializeAuth,indexedDBLocalPersistence,browserPopupRedirectResolver,GoogleAuthProvider,signInWithPopup,onAuthStateChanged,signOut,signInWithEmailAndPassword,createUserWithEmailAndPassword,sendPasswordResetEmail,setPersistence,browserLocalPersistence}from"https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
 import{getFirestore,initializeFirestore,persistentLocalCache,persistentSingleTabManager,doc,setDoc,getDoc,collection,query,where,orderBy,onSnapshot,increment,updateDoc,deleteDoc}from"https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+window._mod=1;
 
 const fb=initializeApp({apiKey:"AIzaSyDaLsIF93OD-Lr9y51j_s4wB9OzahLUiTQ",authDomain:"grocery-debts.firebaseapp.com",projectId:"grocery-debts",storageBucket:"grocery-debts.firebasestorage.app",messagingSenderId:"484535933298",appId:"1:484535933298:web:87f8e2ea08a6d26231e5eb"});
-const auth=getAuth(fb);let db;
-try{db=initializeFirestore(fb,{localCache:persistentLocalCache({tabManager:persistentSingleTabManager()}),experimentalAutoDetectLongPolling:true})}catch(e){db=getFirestore(fb)}
+/* تسريع الدخول: بدون popupRedirectResolver عند البدء (كان يحمّل iframe من جوجل ويؤخّر فتح التطبيق على الجوال) */
+let auth;
+try{auth=initializeAuth(fb,{persistence:[indexedDBLocalPersistence,browserLocalPersistence]})}catch(e){auth=getAuth(fb)}
+let db;
+/* ForceLongPolling: يتخطى فترة الاكتشاف التلقائي التي تؤخر أول اتصال على الشبكات الضعيفة */
+try{db=initializeFirestore(fb,{localCache:persistentLocalCache({tabManager:persistentSingleTabManager()}),experimentalForceLongPolling:true})}catch(e){db=getFirestore(fb)}
 
 const $=s=>document.querySelector(s),A=$('#app'),N=$('#nav');
 const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
@@ -193,7 +212,7 @@ try{document.documentElement.dataset.theme=localStorage.th||''}catch(e){}
 const S={user:null,view:'dashboard',_authTab:'login',customerId:null,supplierId:null,employeeId:null,invoiceId:null,
 customers:[],suppliers:[],products:[],sales:[],purchases:[],expenses:[],ledger:[],employees:[],
 settings:{name:'الكامل سوفت',currency:'ر.ي',phone:'',address:'',autoWhatsApp:true},
-cart:[],formOpen:false,q:'',cf:'all',per:'d',lt:'',unsubs:[],chart:null,pend:{},scanner:null,_lastScan:null,_scanCb:null,posParty:'',scanInfo:null};
+cart:[],formOpen:false,q:'',cf:'all',per:'d',lt:'',unsubs:[],chart:null,pend:{},scanner:null,_lastScan:null,_scanCb:null,posParty:'',scanInfo:null,ready:false,_rt:0};
 
 let D=1,mOpen=false,mPushed=false,pend=false,hq=[],lastBack=0;
 const H=f=>pend?hq.push(f):f();
@@ -302,7 +321,18 @@ function nav(){
 const V={dashboard:()=>dash(),customers:()=>customersList(),customer:()=>partyPage('customer'),suppliers:()=>suppliersList(),supplier:()=>partyPage('supplier'),
 products:()=>productsList(),sales:()=>docList('sale'),'sale-new':()=>invNew('sale'),purchases:()=>docList('purchase'),'purchase-new':()=>invNew('purchase'),
 expenses:()=>expensesList(),employees:()=>employeesList(),employee:()=>employeePage(),reports:()=>reportsView(),ledger:()=>ledgerView(),settings:()=>settingsView(),more:()=>moreView(),pos:()=>posMode(),invoice:()=>invoiceView()};
-function render(){if(!S.user){loginView();return}nav();(V[S.view]||V.dashboard)()}
+
+/* هيكل مؤقت يظهر فوراً حتى تصل البيانات (بدل الشاشة البيضاء) */
+function skeleton(){
+  A.innerHTML=`<div class="top"><div><small>مرحباً 👋</small><h1>${esc(S.settings.name)}</h1></div></div>
+  <div class="sk" style="height:150px;margin:10px 0;border-radius:22px"></div>
+  <div class="g4"><div class="sk" style="height:70px"></div><div class="sk" style="height:70px"></div><div class="sk" style="height:70px"></div><div class="sk" style="height:70px"></div></div>
+  <div class="sk" style="height:110px;margin:14px 0"></div><div class="sk" style="height:110px"></div>`;
+}
+function render(){window._ready=true;if(!S.user){loginView();return}nav();if(!S.ready){skeleton();return}(V[S.view]||V.dashboard)()}
+/* دمج عدة تحديثات متتالية في رسم واحد (كان يُرسم التطبيق 8 مرات عند البدء) */
+let _rq=0;
+const schedule=()=>{if(_rq)return;_rq=setTimeout(()=>{_rq=0;if(!S.formOpen)render()},40)};
 
 function quickSheet(){
   modal(`<h2>ماذا تريد أن تسجّل؟</h2><div class="g2" style="margin-top:12px">
@@ -358,7 +388,7 @@ function loginView(){
     }catch(e){$('#a-go').disabled=false;toast(authErr(e))}};
   $('#a-pass').addEventListener('keydown',e=>{if(e.key==='Enter')$('#a-go').click()});
   if($('#a-forgot'))$('#a-forgot').onclick=async()=>{const em=$('#a-email').value.trim();if(!em)return toast('اكتب بريدك أولاً');try{await sendPasswordResetEmail(auth,em);toast('تم إرسال رابط الاستعادة')}catch(e){toast(authErr(e))}};
-  $('#g').onclick=async()=>{try{await setPersistence(auth,browserLocalPersistence);await signInWithPopup(auth,new GoogleAuthProvider())}catch(e){toast(authErr(e))}};
+  $('#g').onclick=async()=>{try{await setPersistence(auth,browserLocalPersistence);await signInWithPopup(auth,new GoogleAuthProvider(),browserPopupRedirectResolver)}catch(e){toast(authErr(e))}};
 }
 const logout=async()=>{if(!confirm('هل تريد تسجيل الخروج؟'))return;try{await signOut(auth);toast('تم تسجيل الخروج')}catch(e){toast('تعذّر تسجيل الخروج')}};
 
@@ -975,7 +1005,7 @@ function reportsView(){
   $('#pd').onclick=()=>exportPDF('تقرير مالي شامل',`<table border="1" cellspacing="0" cellpadding="8" style="width:100%;border-collapse:collapse;font-size:13px"><tr style="background:#eef3f0"><th>البند</th><th>المبلغ</th></tr>${[['المبيعات',sa],['المشتريات',pu],['المصروفات',ex],['صافي الربح التقديري',prof],['النقدية بالصندوق',cash],['ديون العملاء',recv],['مستحق للموردين',pay],['سحبيات الموظفين',adv],['قيمة المخزون',inv]].map(([l,v])=>`<tr><td>${l}</td><td>${fmt(v)}</td></tr>`).join('')}</table>`);
   const days=[],vals=[];for(let i=6;i>=0;i--){const t0=startDay(now-i*864e5);days.push(new Date(t0).toLocaleDateString('ar-EG',{weekday:'short'}));vals.push(sum(S.sales.filter(s=>s.ts>=t0&&s.ts<t0+864e5),s=>s.total))}
   if(S.chart){S.chart.destroy();S.chart=null}
-  need('chart').then(()=>{if(!$('#ch'))return;S.chart=new Chart($('#ch'),{type:'bar',data:{labels:days,datasets:[{data:vals,backgroundColor:'#f4a93a',borderRadius:8}]},options:{plugins:{legend:{display:false}},scales:{y:{beginAtZero:true}}}})}).catch(()=>{$('#ch').outerHTML='<p class="hint">الرسم البياني يحتاج إنترنت مرة واحدة</p>'});
+  need('chart').then(()=>{if(!$('#ch'))return;S.chart=new Chart($('#ch'),{type:'bar',data:{labels:days,datasets:[{data:vals,backgroundColor:'#f4a93a',borderRadius:8}]},options:{plugins:{legend:{display:false}},scales:{y:{beginAtZero:true}}}})}).catch(()=>{if($('#ch'))$('#ch').outerHTML='<p class="hint">الرسم البياني يحتاج إنترنت مرة واحدة</p>'});
 }
 function ledgerView(){
   const types=[['','الكل'],['sale','مبيعات'],['purchase','مشتريات'],['debt','ديون'],['payment','دفعات'],['expense','مصروفات'],['advance','سحبيات'],['salary','رواتب']];
@@ -1027,6 +1057,7 @@ function publicView(tk){
   <div class="g2" id="pub-summary" style="display:none"><div class="stat"><div class="l">إجمالي الديون</div><div class="n due" id="pub-debt">0</div></div><div class="stat"><div class="l">إجمالي الدفعات</div><div class="n ok" id="pub-pay">0</div></div></div>
   <div class="sec">سجل الحركات</div><div class="card" id="txs"><p class="hint">لا توجد حركات بعد</p></div>
   <button class="btn w" onclick="window.print()">🖨️ طباعة / حفظ PDF</button>`;
+  window._ready=true;
   refreshPubNotifCard();
   onSnapshot(doc(db,'accounts',tk),s=>{
     if(!s.exists()){$('#acc').innerHTML='<small>الرابط غير صحيح.</small>';return}
@@ -1091,11 +1122,16 @@ async function activateCustomerNotifications(tk){
 try{Object.assign(S.settings,JSON.parse(localStorage.st||'{}'))}catch(e){}
 async function loadSettings(){try{const d=await getDoc(doc(db,'settings',S.user.uid));if(d.exists()){S.settings={...S.settings,...d.data()};try{localStorage.st=JSON.stringify(S.settings)}catch(e){}}}catch(e){}}
 function attach(){
-  S.unsubs.forEach(u=>u());S.unsubs=[];S.pend={};const u=S.user.uid;
+  S.unsubs.forEach(u=>u());S.unsubs=[];S.pend={};S.ready=false;const u=S.user.uid;
+  const TOTAL=8;let got=0;
+  /* إن تأخر السيرفر نعرض التطبيق مما هو محفوظ بالجهاز بعد 2.5 ثانية بدل الانتظار */
+  clearTimeout(S._rt);S._rt=setTimeout(()=>{if(!S.ready){S.ready=true;schedule()}},2500);
   const sub=(col,cb)=>{let first=true;
+    const markFirst=()=>{if(first){first=false;if(++got>=TOTAL){S.ready=true;clearTimeout(S._rt)}}};
     S.unsubs.push(onSnapshot(query(collection(db,col),where('owner','==',u)),{includeMetadataChanges:true},s=>{
       S.pend[col]=s.metadata.hasPendingWrites;updateSync();
-      if(first||s.docChanges().length){first=false;cb(s.docs.map(d=>({id:d.id,...d.data()})));if(!S.formOpen)render()}}))};
+      if(first||s.docChanges().length){const wasFirst=first;cb(s.docs.map(d=>({id:d.id,...d.data()})));if(wasFirst)markFirst();schedule()}
+    },e=>{console.warn(col,e.code);markFirst();schedule()}))};
   const byTs=d=>d.sort((a,b)=>b.ts-a.ts);
   sub('accounts',d=>S.customers=d);sub('suppliers',d=>S.suppliers=d);sub('products',d=>S.products=d);
   sub('sales',d=>S.sales=byTs(d));sub('purchases',d=>S.purchases=byTs(d));sub('expenses',d=>S.expenses=byTs(d));sub('ledger',d=>S.ledger=byTs(d));
@@ -1106,7 +1142,7 @@ const tk=new URLSearchParams(location.search).get('c');
 if(tk)publicView(tk);
 else{
   history.replaceState({root:1},'');history.pushState({v:'dashboard',d:1},'');D=1;
-  onAuthStateChanged(auth,async u=>{S.user=u;if(u){loadSettings().then(()=>{if(!S.formOpen)render()});attach();render()}else{S.unsubs.forEach(x=>x());S.unsubs=[];S.pend={};updateSync();render()}});
+  onAuthStateChanged(auth,async u=>{S.user=u;if(u){loadSettings().then(schedule);attach();render()}else{S.unsubs.forEach(x=>x());S.unsubs=[];S.pend={};updateSync();render()}});
 }
 </script>
 </body>
