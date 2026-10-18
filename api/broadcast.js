@@ -32,7 +32,8 @@ module.exports=async(req,res)=>{
     if(!me)return res.status(401).json({error:'auth'});
     if(!ADMINS.includes(me.email))return res.status(403).json({error:'admin'});
 
-    const{title,msg,targets,dry}=req.body||{};
+    const{title,msg,targets,dry,kind}=req.body||{};
+    const MER=kind==='merchants';
     if(typeof msg!=='string'||!msg.trim()||msg.length>240||(title!==undefined&&(typeof title!=='string'||title.length>60)))return res.status(400).json({error:'input'});
     if(!Array.isArray(targets)||!targets.length||targets.length>2000)return res.status(400).json({error:'targets'});
     const T=targets.filter(t=>t&&/^[A-Za-z0-9]{10,64}$/.test(t.id||'')).map(t=>({
@@ -53,6 +54,17 @@ module.exports=async(req,res)=>{
     };
     const found=[];
     try{
+      if(MER){
+        const byId=new Map(T.map(t=>[t.id,t]));let pt='';
+        do{
+          const r=await fetch(`${FS}/merchantSubs?pageSize=300${pt?'&pageToken='+encodeURIComponent(pt):''}`,{headers:H});
+          if(r.status===403){const e=new Error('rules');e.rules=true;throw e}
+          if(!r.ok)break;
+          const j=await r.json();
+          for(const d of j.documents||[]){const t=byId.get(d.fields&&d.fields.owner&&d.fields.owner.stringValue);if(t)found.push({t,d})}
+          pt=j.nextPageToken||'';
+        }while(pt);
+      }else
       for(let i=0;i<T.length;i+=12)
         await Promise.all(T.slice(i,i+12).map(async t=>{(await subsOf(t.id)).forEach(d=>found.push({t,d}))}));
     }catch(e){
@@ -80,7 +92,7 @@ module.exports=async(req,res)=>{
     for(let i=0;i<items.length;i+=20){
       await Promise.all(items.slice(i,i+20).map(async x=>{
         try{
-          const payload=JSON.stringify({title:fill(ttl,x.t).slice(0,60),body:fill(body,x.t).slice(0,300),url:`https://${req.headers.host}/?c=${x.t.id}`});
+          const payload=JSON.stringify({title:fill(ttl,x.t).slice(0,60),body:fill(body,x.t).slice(0,300),url:MER?`https://${req.headers.host}/`:`https://${req.headers.host}/?c=${x.t.id}`});
           await webpush.sendNotification(x.sub,payload,{TTL:86400,urgency:'normal'});
           sent++;
         }catch(e){
